@@ -14,46 +14,66 @@ Score and improve OpenAPI specifications for AI-readiness using the **JAIRF (Jen
 
 > **Note:** `jentic-apitools` is not yet published to PyPI. Install from source until it is.
 
-Clone `jentic-apitools` and install from source:
+All tooling installs into a dedicated venv at `~/.jentic/venv` to avoid conflicts with system Python.
 
 ```bash
+# Create the venv
+uv venv ~/.jentic/venv
+
+# Install jentic-openapi-tools (published on PyPI)
+uv pip install --python ~/.jentic/venv jentic-openapi-tools
+
+# Clone and install jentic-apitools from source
 git clone https://github.com/jentic/jentic-apitools.git ~/.jentic/jentic-apitools
-cd ~/.jentic/jentic-apitools
-pip install -e packages/common -e packages/analyze -e packages/score -e packages/cli
-```
-
-Also install `jentic-openapi-tools` (published on PyPI) for lower-level parsing, validation, and bundling:
-
-```bash
-pip install jentic-openapi-tools
+uv pip install --python ~/.jentic/venv \
+  -e ~/.jentic/jentic-apitools/packages/common \
+  -e ~/.jentic/jentic-apitools/packages/analyze \
+  -e ~/.jentic/jentic-apitools/packages/score \
+  -e ~/.jentic/jentic-apitools/packages/cli
 ```
 
 Verify:
 ```bash
-jentic-apitools --version
-python -c "from jentic.apitools.openapi.parser.core import OpenAPIParser; print('ok')"
+~/.jentic/venv/bin/jentic-apitools --version
+~/.jentic/venv/bin/python -c "from jentic.apitools.openapi.parser.core import OpenAPIParser; print('ok')"
 ```
 
-If already cloned, pull latest:
+If already installed, pull latest `jentic-apitools`:
 ```bash
 cd ~/.jentic/jentic-apitools && git pull
+```
+
+### TOOLS.md
+
+Add to your workspace `TOOLS.md`:
+
+```markdown
+## 🔧 jentic-apis Skill
+
+Installed in a dedicated venv at `~/.jentic/venv`.
+
+- **jentic-apitools CLI:** `~/.jentic/venv/bin/jentic-apitools`
+- **jentic-openapi-tools Python:** `~/.jentic/venv/bin/python`
+- **jentic-apitools source:** `~/.jentic/jentic-apitools/` (cloned from GitHub)
+
+Always use the full venv path when invoking these tools.
 ```
 
 ## Score a Spec
 
 ```bash
 # Score from a local file (table output)
-jentic-apitools score openapi.yaml
+~/.jentic/venv/bin/jentic-apitools score openapi.yaml
 
 # Score from a URL
-jentic-apitools score https://example.com/openapi.json
+~/.jentic/venv/bin/jentic-apitools score https://example.com/openapi.json
 
 # Machine-readable output
-jentic-apitools score openapi.yaml --format json
-jentic-apitools score openapi.yaml --format yaml
+~/.jentic/venv/bin/jentic-apitools score openapi.yaml --format json
+~/.jentic/venv/bin/jentic-apitools score openapi.yaml --format yaml
 
 # Save results
-jentic-apitools score openapi.yaml --format json --output score-report.json
+~/.jentic/venv/bin/jentic-apitools score openapi.yaml --format json --output score-report.json
 ```
 
 ## Interpreting Output
@@ -86,6 +106,8 @@ The score uses a **weighted harmonic mean** across 6 dimensions — a low score 
 For direct manipulation during improvement passes, use `jentic-openapi-tools`:
 
 ```python
+PYTHON = "~/.jentic/venv/bin/python"
+
 from jentic.apitools.openapi.parser.core import OpenAPIParser
 from jentic.apitools.openapi.validator.core import OpenAPIValidator
 from jentic.apitools.openapi.transformer.bundler.core import OpenAPIBundler
@@ -145,8 +167,8 @@ Loop until you cannot meaningfully improve further (score delta < 2 points or Le
 1. Read the current spec
 2. Identify the lowest-scoring JAIRF dimension from the score output
 3. Apply targeted improvements for that dimension (guided by jairf-scoring-guide.md)
-4. Validate changes quickly: `python -c "from jentic.apitools.openapi.validator.core import OpenAPIValidator; r = OpenAPIValidator().validate('file:///path/to/spec.yaml'); print([d.message for d in r.diagnostics])"`
-5. Run: `jentic-apitools score <spec> --format json`
+4. Validate changes quickly: `~/.jentic/venv/bin/python -c "from jentic.apitools.openapi.validator.core import OpenAPIValidator; r = OpenAPIValidator().validate('file:///path/to/spec.yaml'); print([d.message for d in r.diagnostics])"`
+5. Run: `~/.jentic/venv/bin/jentic-apitools score <spec> --format json`
 6. If score improved by >= 2 points, continue. Otherwise stop.
 
 Non-breaking mode constraints — you MUST NOT:
