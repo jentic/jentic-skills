@@ -8,6 +8,7 @@ Skills in this repo are designed for anyone building with Jentic. They require a
 
 | Skill | Description |
 |-------|-------------|
+| [jentic](skills/jentic/) | Core Jentic skill — search, load, and execute any API in the Jentic catalog. Required by `jentic-workflows` and any agent using Jentic for API access. |
 | [jentic-workflows](skills/jentic-workflows/) | Generate Arazzo 1.0.1 workflow YAML from a natural-language goal or agent tool trace. Handles API discovery via Jentic, Arazzo linting with `@jentic/arazzo-validator`, and semantic validation. |
 
 ## Installation
