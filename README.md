@@ -8,8 +8,8 @@ Skills in this repo are designed for anyone building with Jentic. They require a
 
 | Skill | Description |
 |-------|-------------|
-| [jentic](skills/jentic/) | Core Jentic skill — search, load, and execute any API in the Jentic catalog. Required by `jentic-workflows` and any agent using Jentic for API access. |
-| [jentic-mini](skills/jentic-mini/) | Self-hosted Jentic Mini skill — same search/inspect/execute flow but points at a local Docker instance. Uses the V2 Jentic API. No cloud account required. |
+| [jentic](skills/jentic/) | Enterprise skill for the hosted Jentic platform — semantic API search, credential brokering, and execution at scale. Requires a Jentic cloud account. |
+| [jentic-mini](skills/jentic-mini/) | Open-source self-hosted skill for low-volume or personal use. Runs locally via Docker, no cloud account required. Uses the V2 Jentic API (BM25 search, broker pattern). |
 | [jentic-workflows](skills/jentic-workflows/) | Generate Arazzo 1.0.1 workflow YAML from a natural-language goal or agent tool trace. Handles API discovery via Jentic, Arazzo linting with `@jentic/arazzo-validator`, and semantic validation. |
 
 ## Installation
