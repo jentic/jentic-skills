@@ -148,11 +148,20 @@ Do not proceed until the user (or calling agent) confirms the mode.
 
 ### Spawning the Improvement Subagent
 
-Once mode is confirmed, spawn a subagent with:
-- The spec file path
-- The confirmed mode (`breaking` or `non-breaking`)
-- The JAIRF reference (`references/jairf-scoring-guide.md`) in context
-- The baseline score (run `~/.jentic/venv/bin/python {skill_dir}/scripts/score_spec.py <spec>` first so the subagent has a starting point)
+Once mode is confirmed:
+
+1. Run the baseline score and save to a file (do not hold in context):
+   ```bash
+   ~/.jentic/venv/bin/python {skill_dir}/scripts/score_spec.py <spec> --no-details > /tmp/score-baseline.json
+   cat /tmp/score-baseline.json
+   ```
+
+2. Spawn a subagent with `runTimeoutSeconds: 1200` (20 minutes) and the brief below.
+
+> **Context efficiency rules for the spawning agent:**
+> - Do NOT read the spec file into your own context before spawning
+> - Pass file paths, not file contents
+> - The JAIRF reference path is: `{skill_dir}/references/jairf-scoring-guide.md` — pass the path, do not copy the file
 
 **Subagent task brief:**
 
@@ -160,35 +169,76 @@ Once mode is confirmed, spawn a subagent with:
 You are improving an OpenAPI specification for AI-readiness.
 
 Mode: <breaking|non-breaking>
-Spec: <path>
-Baseline score: <score> (Level <level>)
+Spec: <absolute-path>
+Baseline score: <score> (Level <level>, Grade <grade>)
+Skill dir: <skill_dir>
+Score script: ~/.jentic/venv/bin/python <skill_dir>/scripts/score_spec.py
+JAIRF reference: <skill_dir>/references/jairf-scoring-guide.md
 
-Loop until you cannot meaningfully improve further (score delta < 2 points or Level 4 reached):
-1. Read the current spec
-2. Identify the lowest-scoring JAIRF dimension from the score output
-3. Apply targeted improvements for that dimension (guided by jairf-scoring-guide.md)
-4. Validate changes quickly: `~/.jentic/venv/bin/python -c "from jentic.apitools.openapi.validator.core import OpenAPIValidator; r = OpenAPIValidator().validate('file:///path/to/spec.yaml'); print([d.message for d in r.diagnostics])"`
-5. Run: `~/.jentic/venv/bin/python {skill_dir}/scripts/score_spec.py <spec> > score.json`
-6. If score improved by >= 2 points, continue. Otherwise stop.
+## Improvement Loop
 
-Non-breaking mode constraints — you MUST NOT:
-- Change any path, HTTP method, or operationId that already exists
-- Remove or rename any existing parameter (name, in, required)
-- Change any existing response status code or response schema shape
+Run a maximum of 5 iterations. Stop early if score delta < 2 points or Level 4 reached.
+
+For each iteration:
+1. Write a Python edit script to apply improvements — use exec to run it, do NOT read the full spec into context
+2. Run the score script and save output to /tmp/score-iter-N.json (not into context):
+   `~/.jentic/venv/bin/python <skill_dir>/scripts/score_spec.py <spec> --no-details > /tmp/score-iter-N.json`
+3. Read only the `summary` section from the score file:
+   `python3 -c "import json; d=json.load(open('/tmp/score-iter-N.json')); print(json.dumps(d['summary'], indent=2))"`
+4. Decide: if score improved >= 2 points, continue. Otherwise stop.
+
+## Context efficiency rules
+
+- NEVER read the full spec file into context — always use exec/Python scripts to edit
+- NEVER read the full JAIRF reference into context — consult it via exec grep/search if needed
+- Write edits as self-contained Python scripts that load, modify, and save the JSON/YAML file
+- Keep score outputs out of context — save to /tmp files and read only the summary
+
+## Edit pattern (use this, not read+write)
+
+```python
+# edit_spec.py — run with: ~/.jentic/venv/bin/python edit_spec.py
+import json
+
+with open('<spec>') as f:
+    spec = json.load(f)
+
+# Make targeted changes
+spec['paths']['/businesses/search']['get']['summary'] = 'Search businesses by term and location'
+# ... more changes ...
+
+with open('<output-spec>', 'w') as f:
+    json.dump(spec, f, indent=2)
+```
+
+## Non-breaking constraints (STRICT)
+
+MUST NOT:
+- Change any existing path, HTTP method, or operationId
+- Remove or rename any existing parameter
+- Change any existing response status code or schema shape
 - Remove any existing field from a schema
-Only ADD: descriptions, summaries, examples, tags, new operationIds (where missing),
-new response codes (where missing), new schema properties marked as non-required.
 
-Output files:
-- <spec-basename>-improved.yaml — the improved spec
-- <spec-basename>-overlay.yaml — OpenAPI Overlay 1.0.0 (non-breaking mode only)
+MAY ONLY ADD:
+- summary, description fields
+- example / examples fields
+- tags (operations + top-level tags array)
+- operationId where missing
+- New response codes where absent (404, 500, etc.)
+- New non-required schema properties
 
-Report back:
-- Baseline score + level
-- Final score + level
-- Number of improvement iterations
-- Summary of changes made by dimension
+## Output files
+
+- <spec-basename>-improved.json — improved spec (same directory as input)
+- <spec-basename>-overlay.yaml — OpenAPI Overlay 1.0.0 (non-breaking only, same directory)
+
+## Report when done
+
+- Baseline score → final score (level, grade)
+- Iterations completed
+- Changes made by dimension
 - Output file paths
+- If stopped due to 5-iteration cap AND last delta was >= 2 points: flag this clearly and ask the user whether to spawn another round of improvements
 ```
 
 ### OpenAPI Overlay Format (non-breaking output)
