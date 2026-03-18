@@ -22,9 +22,16 @@ cd ~/.jentic/jentic-apitools
 pip install -e packages/common -e packages/analyze -e packages/score -e packages/cli
 ```
 
+Also install `jentic-openapi-tools` (published on PyPI) for lower-level parsing, validation, and bundling:
+
+```bash
+pip install jentic-openapi-tools
+```
+
 Verify:
 ```bash
 jentic-apitools --version
+python -c "from jentic.apitools.openapi.parser.core import OpenAPIParser; print('ok')"
 ```
 
 If already cloned, pull latest:
@@ -74,7 +81,39 @@ The score uses a **weighted harmonic mean** across 6 dimensions — a low score 
 
 **Gating rule:** FC < 40 → Level 0 regardless of other scores. Fix structural issues first.
 
-## Improvement Loop
+## Low-Level Operations (jentic-openapi-tools)
+
+For direct manipulation during improvement passes, use `jentic-openapi-tools`:
+
+```python
+from jentic.apitools.openapi.parser.core import OpenAPIParser
+from jentic.apitools.openapi.validator.core import OpenAPIValidator
+from jentic.apitools.openapi.transformer.bundler.core import OpenAPIBundler
+
+# Parse spec into a dict
+parser = OpenAPIParser()
+spec = parser.parse("file:///path/to/openapi.yaml")
+
+# Validate and get diagnostics
+validator = OpenAPIValidator()
+result = validator.validate("file:///path/to/openapi.yaml")
+for d in result.diagnostics:
+    print(f"{d.severity}: {d.message}")
+
+# Bundle (resolve external $refs)
+bundler = OpenAPIBundler("redocly")
+bundled = bundler.bundle("file:///path/to/openapi.yaml", return_type=dict)
+```
+
+Use `jentic-openapi-tools` to:
+- Parse a spec for programmatic editing
+- Validate after making changes (fast, no scoring overhead)
+- Bundle specs with external references before scoring
+- Check diagnostics to target specific fixes
+
+Use `jentic-apitools score` after editing to get the updated JAIRF score.
+
+
 
 When a user asks to improve an API spec, **always ask first:**
 
@@ -106,8 +145,9 @@ Loop until you cannot meaningfully improve further (score delta < 2 points or Le
 1. Read the current spec
 2. Identify the lowest-scoring JAIRF dimension from the score output
 3. Apply targeted improvements for that dimension (guided by jairf-scoring-guide.md)
-4. Run: jentic-apitools score <spec> --format json
-5. If score improved by >= 2 points, continue. Otherwise stop.
+4. Validate changes quickly: `python -c "from jentic.apitools.openapi.validator.core import OpenAPIValidator; r = OpenAPIValidator().validate('file:///path/to/spec.yaml'); print([d.message for d in r.diagnostics])"`
+5. Run: `jentic-apitools score <spec> --format json`
+6. If score improved by >= 2 points, continue. Otherwise stop.
 
 Non-breaking mode constraints — you MUST NOT:
 - Change any path, HTTP method, or operationId that already exists
