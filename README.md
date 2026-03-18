@@ -12,12 +12,16 @@ Skills in this repo are designed for anyone building with Jentic. They require a
 
 ## Installation
 
-```bash
-# Install a skill into your OpenClaw workspace
-clawhub install <skill-slug>
+Paste this into your OpenClaw agent to install all Jentic skills:
 
-# Or clone and point extraDirs at this repo
-git clone https://github.com/jentic/jentic-skills.git
+```
+Clone https://github.com/jentic/jentic-skills.git into ~/.openclaw/skills/jentic-skills and add ~/.openclaw/skills/jentic-skills/skills to skills.load.extraDirs in ~/.openclaw/openclaw.json
+```
+
+Or manually:
+
+```bash
+git clone https://github.com/jentic/jentic-skills.git ~/.openclaw/skills/jentic-skills
 ```
 
 Then add to your `~/.openclaw/openclaw.json`:
@@ -25,7 +29,7 @@ Then add to your `~/.openclaw/openclaw.json`:
 {
   "skills": {
     "load": {
-      "extraDirs": ["/path/to/jentic-skills/skills"]
+      "extraDirs": ["~/.openclaw/skills/jentic-skills/skills"]
     }
   }
 }
