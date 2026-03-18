@@ -122,7 +122,8 @@ def main():
     # Write output to a temp file, redirecting all stdout/stderr during pipeline
     output_file = tempfile.mktemp(suffix=".json", prefix="jentic-result-")
 
-    # Redirect stdout/stderr to /dev/null during pipeline run (structlog writes to stdout)
+    # Redirect stdout AND stderr to /dev/null during pipeline run
+    # (structlog writes JSON log lines directly to stdout; OpenClaw captures stderr to app.log)
     devnull = open(os.devnull, "w")
     old_stdout = os.dup(1)
     old_stderr = os.dup(2)
