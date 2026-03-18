@@ -61,20 +61,20 @@ Always use the full venv path when invoking these tools.
 
 ## Score a Spec
 
+> **Note:** The `jentic-apitools score` CLI is not yet wired up. Use the bundled `scripts/score_spec.py` instead.
+
 ```bash
-# Score from a local file (table output)
-~/.jentic/venv/bin/jentic-apitools score openapi.yaml
+# Score a spec (JSON output)
+~/.jentic/venv/bin/python {skill_dir}/scripts/score_spec.py openapi.yaml
 
-# Score from a URL
-~/.jentic/venv/bin/jentic-apitools score https://example.com/openapi.json
-
-# Machine-readable output
-~/.jentic/venv/bin/jentic-apitools score openapi.yaml --format json
-~/.jentic/venv/bin/jentic-apitools score openapi.yaml --format yaml
+# Score without the per-signal details (summary only)
+~/.jentic/venv/bin/python {skill_dir}/scripts/score_spec.py openapi.yaml --no-details
 
 # Save results
-~/.jentic/venv/bin/jentic-apitools score openapi.yaml --format json --output score-report.json
+~/.jentic/venv/bin/python {skill_dir}/scripts/score_spec.py openapi.yaml > score-report.json
 ```
+
+Replace `{skill_dir}` with the path to this skill's directory (e.g. `~/.openclaw/workspace/repositories/jentic-skills/skills/jentic-apis`).
 
 ## Interpreting Output
 
@@ -152,7 +152,7 @@ Once mode is confirmed, spawn a subagent with:
 - The spec file path
 - The confirmed mode (`breaking` or `non-breaking`)
 - The JAIRF reference (`references/jairf-scoring-guide.md`) in context
-- The baseline score (run `jentic-apitools score` first so the subagent has a starting point)
+- The baseline score (run `~/.jentic/venv/bin/python {skill_dir}/scripts/score_spec.py <spec>` first so the subagent has a starting point)
 
 **Subagent task brief:**
 
@@ -168,7 +168,7 @@ Loop until you cannot meaningfully improve further (score delta < 2 points or Le
 2. Identify the lowest-scoring JAIRF dimension from the score output
 3. Apply targeted improvements for that dimension (guided by jairf-scoring-guide.md)
 4. Validate changes quickly: `~/.jentic/venv/bin/python -c "from jentic.apitools.openapi.validator.core import OpenAPIValidator; r = OpenAPIValidator().validate('file:///path/to/spec.yaml'); print([d.message for d in r.diagnostics])"`
-5. Run: `~/.jentic/venv/bin/jentic-apitools score <spec> --format json`
+5. Run: `~/.jentic/venv/bin/python {skill_dir}/scripts/score_spec.py <spec> > score.json`
 6. If score improved by >= 2 points, continue. Otherwise stop.
 
 Non-breaking mode constraints — you MUST NOT:
@@ -267,7 +267,7 @@ Load this when you need to understand exactly how a score is calculated or want 
 
 | Situation | Action |
 |-----------|--------|
-| Need baseline score for a spec | `jentic-apitools score <file> --format json` |
+| Need baseline score for a spec | `~/.jentic/venv/bin/python {skill_dir}/scripts/score_spec.py <file>` |
 | Score is low but unclear why | Check per-dimension breakdown; lowest dimension = highest priority |
 | FC < 40 | Fix structural/lint issues before anything else — gating rule |
 | User says "improve this API" | Ask breaking vs non-breaking before spawning subagent |
