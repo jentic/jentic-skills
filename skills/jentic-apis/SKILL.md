@@ -199,9 +199,10 @@ Key rules:
 - `extends` should point to the original spec (relative path)
 
 **FC (low score = structural problems)**
-- Run a linter (`spectral lint`, `redocly lint`) and fix errors
-- Resolve broken `$ref` references
-- Fix impossible schema constraints (`minimum > maximum`, etc.)
+- Validate and get diagnostics: `OpenAPIValidator().validate("file:///path/to/spec.yaml")`
+- Fix all error and warning diagnostics before attempting other improvements
+- Resolve broken `$ref` references — use `OpenAPIBundler` to check bundling succeeds
+- Fix impossible schema constraints (`minimum > maximum`, contradictory types, etc.)
 
 **DXJ (low score = poor documentation/examples)**
 - Add `example` or `examples` to request bodies and responses
