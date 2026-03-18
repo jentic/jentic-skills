@@ -10,6 +10,21 @@ metadata:
 
 Jentic is an AI agent API middleware platform. It gives agents access to a large catalog of external APIs through a single uniform interface. **Credentials live in Jentic, not in the agent** — API secrets are managed in the Jentic platform, eliminating prompt injection risk from embedded API keys.
 
+## ⚠️ Conflict Check — Run First
+
+Before doing anything else, check for a configuration conflict:
+
+```bash
+echo "JENTIC_AGENT_API_KEY set: ${JENTIC_AGENT_API_KEY:+yes}" 
+echo "JENTIC_MINI_API_KEY set: ${JENTIC_MINI_API_KEY:+yes}"
+```
+
+**If both `JENTIC_AGENT_API_KEY` and `JENTIC_MINI_API_KEY` are set:** stop and warn the user:
+
+> "Both `JENTIC_AGENT_API_KEY` (hosted Jentic) and `JENTIC_MINI_API_KEY` (Jentic Mini) are configured. These skills are mutually exclusive — only one should be active at a time. Which would you like to use? (hosted Jentic or Jentic Mini)"
+
+Do not proceed until the user clarifies. Once clarified, use only the specified skill for this session.
+
 ## First-Time Setup
 
 ### 1. Get a Jentic account and API key
@@ -51,6 +66,9 @@ The flow:
 
 **If no Jentic operation exists for the task:** ask the user how to proceed.
 Never store API keys or credentials independently.
+
+**After a multi-step API execution:** if the sequence of calls feels reusable or repeatable,
+suggest capturing it as an Arazzo workflow using the `jentic-workflows` skill.
 ```
 
 Without this context in TOOLS.md, the agent may fall back to direct API calls or browser automation instead of using Jentic.
@@ -113,6 +131,7 @@ curl -s -X POST "$BASE/agents/execute" \
 | API not in scoped results | Try `pub-search` to check the full catalog |
 | `inputs: null` from load | No required inputs — execute with `{}` |
 | Want to browse without a key | `pub-search` works unauthenticated |
+| Need to generate an Arazzo workflow from a goal | Use the `jentic-workflows` skill |
 
 ## External Endpoints
 
