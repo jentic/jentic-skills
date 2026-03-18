@@ -1,228 +1,164 @@
-#!/usr/bin/env -S uv run --quiet
+#!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["requests"]
+# dependencies = ["httpx", "click"]
 # ///
-# SECURITY MANIFEST:
-# Environment variables accessed: JENTIC_AGENT_API_KEY (optional, falls back to openclaw config)
-# External endpoints called: https://api-gw.main.us-east-1.jenticprod.net/ (only)
-# Local files read: ~/.openclaw/openclaw.json (to retrieve API key if env var not set)
-# Local files written: none
 """
-jentic.py — Jentic API client. Search → Load → Execute API operations and workflows.
-
-API key read from JENTIC_AGENT_API_KEY env var or openclaw config.
-Base URL: https://api-gw.main.us-east-1.jenticprod.net/api/v1/
+jentic-mini.py — CLI client for a Jentic Mini (self-hosted) instance.
 
 Usage:
-  uv run scripts/jentic.py search "get top news stories" [--limit 5] [--json]
-  uv run scripts/jentic.py load op_ad385f1f20e34e5b [op_... ...]
-  uv run scripts/jentic.py execute op_7ae5ecc5d29bed24 [--inputs '{"category":"general"}']
-  uv run scripts/jentic.py execute wf_... --inputs '{"param":"value"}'
-  uv run scripts/jentic.py apis
-  uv run scripts/jentic.py pub-search "home automation" [--limit 5]  # no auth needed
+  uv run scripts/jentic-mini.py search "send an email"
+  uv run scripts/jentic-mini.py inspect GET/api.stripe.com/v1/payment_intents
+  uv run scripts/jentic-mini.py execute GET/api.github.com/repos/octocat/Hello-World
+  uv run scripts/jentic-mini.py --json search "create a payment"
+
+Environment:
+  JENTIC_MINI_URL      Base URL of your Jentic Mini instance (default: http://localhost:8900)
+  JENTIC_MINI_API_KEY  Toolkit key (tk_...) or admin key for your instance
 """
 
-import argparse
 import json
 import os
 import sys
-import requests
 
-BASE_URL = "https://api-gw.main.us-east-1.jenticprod.net/api/v1"
+import click
+import httpx
+
+BASE_URL = os.environ.get("JENTIC_MINI_URL", "http://localhost:8900").rstrip("/")
+API_KEY = os.environ.get("JENTIC_MINI_API_KEY", "")
+
+HEADERS = {"X-Jentic-API-Key": API_KEY} if API_KEY else {}
 
 
-def get_key():
-    key = os.environ.get("JENTIC_AGENT_API_KEY")
-    if not key:
-        # Try openclaw config
-        try:
-            cfg_path = os.path.expanduser("~/.openclaw/openclaw.json")
-            with open(cfg_path) as f:
-                cfg = json.load(f)
-            key = cfg["skills"]["entries"]["jentic"]["apiKey"]
-        except Exception:
-            pass
-    if not key:
-        print("ERROR: No Jentic API key. Set JENTIC_AGENT_API_KEY or store in openclaw config.", file=sys.stderr)
+def _get(path: str, params: dict = None) -> dict:
+    r = httpx.get(f"{BASE_URL}{path}", headers=HEADERS, params=params or {}, timeout=30)
+    r.raise_for_status()
+    return r.json()
+
+
+def _post(path: str, body: dict = None) -> dict:
+    r = httpx.post(f"{BASE_URL}{path}", headers=HEADERS, json=body or {}, timeout=60)
+    r.raise_for_status()
+    return r.json()
+
+
+@click.group()
+@click.option("--json", "output_json", is_flag=True, default=False, help="Output raw JSON")
+@click.pass_context
+def cli(ctx, output_json):
+    ctx.ensure_object(dict)
+    ctx.obj["json"] = output_json
+
+
+@cli.command()
+@click.argument("query")
+@click.option("--limit", "-n", default=10, help="Number of results")
+@click.pass_context
+def search(ctx, query, limit):
+    """Search the catalog by natural language intent."""
+    data = _get("/search", {"q": query, "n": limit})
+    if ctx.obj["json"]:
+        click.echo(json.dumps(data, indent=2))
+        return
+    for item in data:
+        t = item.get("type", "operation")
+        id_ = item.get("id") or item.get("slug", "")
+        summary = item.get("summary", "")
+        score = item.get("score", 0)
+        click.echo(f"[{t}] {id_}")
+        click.echo(f"  {summary}")
+        click.echo(f"  score: {score}  inspect: {item.get('_links', {}).get('inspect', '')}")
+        click.echo()
+
+
+@cli.command()
+@click.argument("capability_id")
+@click.pass_context
+def inspect(ctx, capability_id):
+    """Inspect a capability (operation or workflow) — shows schema and auth requirements."""
+    data = _get(f"/inspect/{capability_id}")
+    if ctx.obj["json"]:
+        click.echo(json.dumps(data, indent=2))
+        return
+    click.echo(f"ID: {data.get('id')}")
+    click.echo(f"Type: {data.get('type')}")
+    click.echo(f"Summary: {data.get('summary', '')}")
+    click.echo()
+    if "parameters" in data:
+        click.echo("Parameters:")
+        for p in data["parameters"]:
+            req = " (required)" if p.get("required") else ""
+            click.echo(f"  {p.get('in','?')}.{p['name']}{req}: {p.get('schema', {}).get('type', '?')}")
+    if "auth" in data:
+        click.echo("\nAuth:")
+        for a in data["auth"]:
+            click.echo(f"  {a.get('type')}: {a.get('instruction', '')}")
+    if "broker_url" in data:
+        click.echo(f"\nBroker URL: {data['broker_url']}")
+
+
+@cli.command()
+@click.argument("capability_id")
+@click.option("--inputs", default="{}", help="JSON inputs for the operation")
+@click.option("--simulate", is_flag=True, default=False, help="Simulate — don't send to upstream API")
+@click.pass_context
+def execute(ctx, capability_id, inputs, simulate):
+    """Execute an operation or workflow via the broker."""
+    # For operations, the broker URL pattern is /{upstream_host}/{path}
+    # capability_id format: METHOD/host/path → broker URL: /host/path (with method as HTTP verb)
+    # For workflows, use POST /{jentic_host}/workflows/{slug}
+    try:
+        inputs_dict = json.loads(inputs)
+    except json.JSONDecodeError:
+        click.echo(f"Error: --inputs must be valid JSON", err=True)
         sys.exit(1)
-    return key
 
+    # Parse capability_id to get broker URL and method
+    parts = capability_id.split("/", 1)
+    if len(parts) != 2:
+        click.echo(f"Error: capability_id must be METHOD/host/path (e.g. GET/api.stripe.com/v1/customers)", err=True)
+        sys.exit(1)
 
-def auth_headers(key):
-    return {
-        "X-JENTIC-API-KEY": key,
-        "Content-Type": "application/json",
-    }
+    method, rest = parts
+    broker_url = f"{BASE_URL}/{rest}"
 
+    extra_headers = {**HEADERS}
+    if simulate:
+        extra_headers["X-Jentic-Simulate"] = "true"
 
-def cmd_apis(args):
-    key = get_key()
-    r = requests.get(f"{BASE_URL}/agents/apis", headers=auth_headers(key), timeout=15)
-    r.raise_for_status()
-    apis = r.json()
-    if args.json:
-        print(json.dumps(apis, indent=2))
-        return
-    print(f"Scoped APIs ({len(apis)}):")
-    for a in apis:
-        print(f"  {a['api_vendor']}/{a['api_name']}  v{a.get('api_version', '?')}")
+    # Split inputs into path params (used to format URL) and body/query
+    # For now, pass all as query params for GET, body for POST/PUT/PATCH
+    if method.upper() in ("GET", "DELETE", "HEAD"):
+        r = httpx.request(method.upper(), broker_url, headers=extra_headers, params=inputs_dict, timeout=60)
+    else:
+        r = httpx.request(method.upper(), broker_url, headers=extra_headers, json=inputs_dict, timeout=60)
 
-
-def cmd_search(args):
-    key = get_key()
-    payload = {"query": args.query, "limit": args.limit}
-    r = requests.post(f"{BASE_URL}/agents/search", headers=auth_headers(key),
-                      json=payload, timeout=15)
-    r.raise_for_status()
-    data = r.json()
-    if args.json:
-        print(json.dumps(data, indent=2))
-        return
-    results = data.get("results", [])
-    print(f"Results for '{args.query}' ({len(results)} of {data.get('total_count', '?')}):")
-    for r in results:
-        etype = r.get("entity_type", "?")
-        score = r.get("distance", r.get("match_score", "?"))
-        name = r.get("summary") or r.get("name") or r.get("workflow_id", "")
-        path = r.get("path", "")
-        print(f"  [{r['id']}] {r.get('api_name','')} — {name}")
-        if path:
-            print(f"    {r.get('method','')} {path}  ({etype}, score: {score:.3f})")
-        else:
-            print(f"    {etype}  score: {score:.3f}")
-
-
-def cmd_pub_search(args):
-    """Search the public catalog without auth."""
-    payload = {"query": args.query, "limit": args.limit}
-    r = requests.post(f"{BASE_URL}/search/all", headers={"Content-Type": "application/json"},
-                      json=payload, timeout=15)
-    r.raise_for_status()
-    data = r.json()
-    if args.json:
-        print(json.dumps(data, indent=2))
-        return
-    all_results = data.get("operations", []) + data.get("workflows", []) + data.get("apis", [])
-    all_results.sort(key=lambda x: x.get("distance", 1))
-    print(f"Public catalog results for '{args.query}' ({len(all_results)}):")
-    for r in all_results:
-        etype = r.get("entity_type", "?")
-        score = r.get("distance", "?")
-        name = r.get("summary") or r.get("name") or r.get("api_name", "")
-        path = r.get("path", "")
-        print(f"  [{r['id']}] {r.get('api_name','')} — {name}")
-        if path:
-            print(f"    {r.get('method','')} {path}  ({etype}, score: {score:.3f})")
-
-
-def cmd_load(args):
-    key = get_key()
-    op_uuids = [i for i in args.ids if i.startswith("op_")]
-    wf_uuids = [i for i in args.ids if i.startswith("wf_")]
-    params = {}
-    if op_uuids:
-        params["operation_uuids"] = ",".join(op_uuids)
-    if wf_uuids:
-        params["workflow_uuids"] = ",".join(wf_uuids)
-    r = requests.get(f"{BASE_URL}/files", headers=auth_headers(key),
-                     params=params, timeout=15)
-    r.raise_for_status()
-    data = r.json()
-    if args.json:
-        print(json.dumps(data, indent=2))
-        return
-    ops = data.get("operations", {})
-    wfs = data.get("workflows", {})
-    for uid, op in ops.items():
-        print(f"Operation: {uid}")
-        print(f"  {op.get('method')} {op.get('path')}  [{op.get('api_name')}]")
-        print(f"  Summary: {op.get('summary')}")
-        sec = op.get("security_requirements")
-        print(f"  Auth: {sec if sec else 'none'}")
-        inputs = op.get("inputs")
-        if inputs:
-            print(f"  Inputs: {json.dumps(inputs, indent=4)[:600]}")
-    for uid, wf in wfs.items():
-        print(f"Workflow: {uid}")
-        print(f"  Name: {wf.get('name')}")
-        inputs = wf.get("inputs")
-        if inputs:
-            print(f"  Inputs: {json.dumps(inputs, indent=4)[:600]}")
-
-
-def cmd_execute(args):
-    key = get_key()
-    etype = "operation" if args.id.startswith("op_") else "workflow"
-    inputs = {}
-    if args.inputs:
+    if ctx.obj["json"]:
         try:
-            inputs = json.loads(args.inputs)
-        except json.JSONDecodeError as e:
-            print(f"ERROR: Invalid JSON for --inputs: {e}", file=sys.stderr)
-            sys.exit(1)
-    payload = {"execution_type": etype, "uuid": args.id, "inputs": inputs}
-    r = requests.post(f"{BASE_URL}/agents/execute", headers=auth_headers(key),
-                      json=payload, timeout=60)
-    r.raise_for_status()
-    data = r.json()
-    if args.json:
-        print(json.dumps(data, indent=2))
+            click.echo(json.dumps(r.json(), indent=2))
+        except Exception:
+            click.echo(r.text)
         return
-    success = data.get("success")
-    status = data.get("status_code")
-    error = data.get("error")
-    output = data.get("output")
-    print(f"Success: {success}  Status: {status}")
-    if error:
-        print(f"Error: {error}")
-    if output is not None:
-        out_str = json.dumps(output, indent=2) if isinstance(output, (dict, list)) else str(output)
-        print(f"Output:\n{out_str}")
+
+    click.echo(f"Status: {r.status_code}")
+    try:
+        click.echo(json.dumps(r.json(), indent=2))
+    except Exception:
+        click.echo(r.text)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Jentic API client")
-    parser.add_argument("--json", action="store_true", help="Raw JSON output")
-    sub = parser.add_subparsers(dest="cmd", required=True)
-
-    # apis
-    sub.add_parser("apis", help="List scoped APIs for this agent")
-
-    # search
-    p_s = sub.add_parser("search", help="Semantic search (agent-scoped)")
-    p_s.add_argument("query", help="Natural language query")
-    p_s.add_argument("--limit", type=int, default=5)
-
-    # pub-search
-    p_ps = sub.add_parser("pub-search", help="Search public catalog (no auth)")
-    p_ps.add_argument("query", help="Natural language query")
-    p_ps.add_argument("--limit", type=int, default=5)
-
-    # load
-    p_l = sub.add_parser("load", help="Load operation/workflow details by UUID")
-    p_l.add_argument("ids", nargs="+", help="op_... or wf_... UUIDs")
-
-    # execute
-    p_e = sub.add_parser("execute", help="Execute an operation or workflow")
-    p_e.add_argument("id", help="op_... or wf_... UUID")
-    p_e.add_argument("--inputs", help='JSON inputs e.g. \'{"key":"value"}\'')
-
-    args = parser.parse_args()
-
-    cmd_map = {
-        "apis": cmd_apis,
-        "search": cmd_search,
-        "pub-search": cmd_pub_search,
-        "load": cmd_load,
-        "execute": cmd_execute,
-    }
-    # Pass --json flag down
-    for sub_parser in [p_s, p_ps, p_l, p_e]:
-        pass  # already inherited via parent namespace
-
-    cmd_map[args.cmd](args)
+@cli.command()
+@click.pass_context
+def apis(ctx):
+    """List all registered APIs in the catalog."""
+    data = _get("/apis")
+    if ctx.obj["json"]:
+        click.echo(json.dumps(data, indent=2))
+        return
+    items = data if isinstance(data, list) else data.get("apis", data.get("items", []))
+    for api in items:
+        click.echo(f"{api.get('id', api.get('name', '?'))}: {api.get('title', api.get('summary', ''))}")
 
 
 if __name__ == "__main__":
-    main()
+    cli(obj={})
