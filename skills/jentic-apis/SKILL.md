@@ -76,12 +76,87 @@ The score uses a **weighted harmonic mean** across 6 dimensions — a low score 
 
 ## Improvement Loop
 
-1. **Score** — get baseline + dimension breakdown
-2. **Identify** — find the lowest-scoring dimensions
-3. **Fix** — apply targeted improvements (see JAIRF guide below)
-4. **Re-score** — verify improvement
+When a user asks to improve an API spec, **always ask first:**
 
-### Quick Wins by Dimension
+> "Should I make **breaking** or **non-breaking** improvements?
+>
+> - **Non-breaking** — adds descriptions, summaries, examples, operationIds, tags, fixes lint issues. Does not change paths, parameter names, response shapes, or anything a client depends on. Output: improved spec + an OpenAPI Overlay (the delta, reusable and auditable).
+> - **Breaking** — anything goes: restructure paths, rename parameters, redesign schemas for better agent usability. Output: improved spec only."
+
+Do not proceed until the user (or calling agent) confirms the mode.
+
+### Spawning the Improvement Subagent
+
+Once mode is confirmed, spawn a subagent with:
+- The spec file path
+- The confirmed mode (`breaking` or `non-breaking`)
+- The JAIRF reference (`references/jairf-scoring-guide.md`) in context
+- The baseline score (run `jentic-apitools score` first so the subagent has a starting point)
+
+**Subagent task brief:**
+
+```
+You are improving an OpenAPI specification for AI-readiness.
+
+Mode: <breaking|non-breaking>
+Spec: <path>
+Baseline score: <score> (Level <level>)
+
+Loop until you cannot meaningfully improve further (score delta < 2 points or Level 4 reached):
+1. Read the current spec
+2. Identify the lowest-scoring JAIRF dimension from the score output
+3. Apply targeted improvements for that dimension (guided by jairf-scoring-guide.md)
+4. Run: jentic-apitools score <spec> --format json
+5. If score improved by >= 2 points, continue. Otherwise stop.
+
+Non-breaking mode constraints — you MUST NOT:
+- Change any path, HTTP method, or operationId that already exists
+- Remove or rename any existing parameter (name, in, required)
+- Change any existing response status code or response schema shape
+- Remove any existing field from a schema
+Only ADD: descriptions, summaries, examples, tags, new operationIds (where missing),
+new response codes (where missing), new schema properties marked as non-required.
+
+Output files:
+- <spec-basename>-improved.yaml — the improved spec
+- <spec-basename>-overlay.yaml — OpenAPI Overlay 1.0.0 (non-breaking mode only)
+
+Report back:
+- Baseline score + level
+- Final score + level
+- Number of improvement iterations
+- Summary of changes made by dimension
+- Output file paths
+```
+
+### OpenAPI Overlay Format (non-breaking output)
+
+The overlay file must conform to OpenAPI Overlay 1.0.0. For the full spec and examples see `references/openapi-overlay-spec.md`.
+
+Quick structure:
+
+```yaml
+overlay: 1.0.0
+info:
+  title: AI-readiness improvements for <API name>
+  version: 1.0.0
+extends: ./<original-spec-filename>
+actions:
+  - target: "$.paths['/example'].get"
+    update:
+      summary: "Retrieve a single example resource by ID"
+      description: "Returns the full representation of an example..."
+  - target: "$.paths['/example'].get.parameters[?(@.name=='id')]"
+    update:
+      description: "The unique identifier of the example resource"
+```
+
+Key rules:
+- `target` is a JSONPath expression (RFC 9535) identifying what to update
+- `update` merges new values into the target object; appends to arrays
+- `remove: true` removes the target (avoid in non-breaking mode)
+- Actions applied in order — later actions override earlier ones
+- `extends` should point to the original spec (relative path)
 
 **FC (low score = structural problems)**
 - Run a linter (`spectral lint`, `redocly lint`) and fix errors
@@ -132,6 +207,9 @@ Load this when you need to understand exactly how a score is calculated or want 
 | Need baseline score for a spec | `jentic-apitools score <file> --format json` |
 | Score is low but unclear why | Check per-dimension breakdown; lowest dimension = highest priority |
 | FC < 40 | Fix structural/lint issues before anything else — gating rule |
+| User says "improve this API" | Ask breaking vs non-breaking before spawning subagent |
+| Non-breaking improvement | Subagent loop + output improved spec + overlay |
+| Breaking improvement | Subagent loop + output improved spec only |
 | Need to explain a score to a stakeholder | Load `references/jairf-scoring-guide.md` for the full framework |
 | Spec has hardcoded credentials | Must remove — SEC hard-capped at 20 until fixed |
 | Want to track improvement over time | Save JSON output with `--output` and compare across runs |
