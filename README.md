@@ -8,7 +8,7 @@ Skills in this repo are designed for anyone building with Jentic. They require a
 
 | Skill | Description |
 |-------|-------------|
-| *(skills coming soon)* | |
+| [jentic-workflows](skills/jentic-workflows/) | Generate Arazzo 1.0.1 workflow YAML from a natural-language goal or agent tool trace. Handles API discovery via Jentic, Arazzo linting with `@jentic/arazzo-validator`, and semantic validation. |
 
 ## Installation
 
