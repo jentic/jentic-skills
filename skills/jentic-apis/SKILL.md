@@ -146,6 +146,20 @@ When a user asks to improve an API spec, **always ask first:**
 
 Do not proceed until the user (or calling agent) confirms the mode.
 
+### What counts as non-breaking vs breaking
+
+**Non-breaking (safe to add without risk):**
+- `summary` and `description` fields on operations, parameters, schemas, properties
+- `example` / `examples` fields
+- `tags` on operations and top-level tags array *(note: may affect SDK code generation — grouped client classes may change)*
+- New non-required schema properties
+
+**Breaking (moves that change contracts or generated client code):**
+- Adding `operationId` where missing — SDK generators rename previously auto-named methods
+- Adding new response codes — can't tell from a spec whether they're unimplemented or just undocumented
+- RFC 9457 Problem Details on existing error responses — modifies existing response schema shape
+- Anything that removes, renames, or restructures existing paths, parameters, or schemas
+
 ### Spawning the Improvement Subagent
 
 Once mode is confirmed:
@@ -177,7 +191,7 @@ JAIRF reference: <skill_dir>/references/jairf-scoring-guide.md
 
 ## Improvement Loop
 
-Run a maximum of 5 iterations. Stop early if score delta < 2 points or Level 4 reached.
+Run a maximum of **2 iterations**, then always report back and ask the user whether to continue — regardless of score delta. Stop early only if Level 4 is reached.
 
 For each iteration:
 1. Write a Python edit script to apply improvements — use exec to run it, do NOT read the full spec into context
@@ -218,13 +232,14 @@ MUST NOT:
 - Remove or rename any existing parameter
 - Change any existing response status code or schema shape
 - Remove any existing field from a schema
+- Add `operationId` where missing (breaks SDK generators)
+- Add new response codes (can't tell if unimplemented or just undocumented)
+- Add RFC 9457 to existing error responses (modifies existing schema shape)
 
 MAY ONLY ADD:
 - summary, description fields
 - example / examples fields
 - tags (operations + top-level tags array)
-- operationId where missing
-- New response codes where absent (404, 500, etc.)
 - New non-required schema properties
 
 ## Output files
@@ -238,7 +253,7 @@ MAY ONLY ADD:
 - Iterations completed
 - Changes made by dimension
 - Output file paths
-- If stopped due to 5-iteration cap AND last delta was >= 2 points: flag this clearly and ask the user whether to spawn another round of improvements
+- Always ask the user whether to continue with another round (unless Level 4 reached)
 ```
 
 ### OpenAPI Overlay Format (non-breaking output)
