@@ -233,18 +233,12 @@ openclaw config set skills.entries.jentic.url "http://localhost:8900"
 
 If `openclaw config set` is not available, edit the OpenClaw config JSON directly.
 
-Also export for the current session so the client script can use them:
+Also export for the current session:
 
 ```bash
 export JENTIC_API_KEY="$AGENT_KEY"
 export JENTIC_URL="http://localhost:8900"
 ```
-
-> **Note on env var names:** The client script (`scripts/jentic.py`) currently reads `JENTIC_MINI_URL` and `JENTIC_MINI_API_KEY`. Set those as well for compatibility:
-> ```bash
-> export JENTIC_MINI_URL="http://localhost:8900"
-> export JENTIC_MINI_API_KEY="$AGENT_KEY"
-> ```
 
 **8. Locate the client script:**
 
@@ -261,8 +255,8 @@ Verify: `uv --version`.
 **10. Test it works:**
 
 ```bash
-JENTIC_MINI_URL=http://localhost:8900 JENTIC_MINI_API_KEY="$AGENT_KEY" \
-  uv run scripts/jentic.py search "list files" --limit 3
+JENTIC_URL=http://localhost:8900 JENTIC_API_KEY="$AGENT_KEY" \
+  uv run $SKILL_DIR/scripts/jentic.py search "list files" --limit 3
 ```
 
 If this returns results (even an empty list is fine for a fresh instance), the connection is working. If it returns an auth error, verify the key was captured correctly in step 5.
@@ -283,8 +277,8 @@ The flow:
 3. `execute` — run via the broker
 
 **Setup:** Jentic Mini (self-hosted) at `http://localhost:8900`.
-- `JENTIC_API_KEY` / `JENTIC_MINI_API_KEY` stored in OpenClaw config.
-- `JENTIC_URL` / `JENTIC_MINI_URL` = `http://localhost:8900`
+- `JENTIC_API_KEY` = your toolkit key (`tk_...`)
+- `JENTIC_URL` = `http://localhost:8900`
 - Admin UI: http://localhost:8900
 - Reset: `cd ~/jentic-mini && docker compose down -v && JENTIC_HOST_PATH=$(pwd) docker compose up -d --build`
 
@@ -353,7 +347,7 @@ uv run $SKILL_DIR/scripts/jentic.py --json search "create a payment"
 
 Capability IDs use the format `METHOD/host/path` (e.g. `GET/api.stripe.com/v1/customers`).
 
-> **Env vars for the client script:** The script reads `JENTIC_MINI_URL` (default: `http://localhost:8900`) and `JENTIC_MINI_API_KEY`. Ensure these are set or exported before running.
+> **Env vars:** The script reads `JENTIC_URL` (default: `https://api.jentic.com/v2`) and `JENTIC_API_KEY`. For jentic-mini, set `JENTIC_URL=http://localhost:8900` and `JENTIC_API_KEY=tk_...`. For hosted, just set `JENTIC_API_KEY=ak_...`.
 
 ## Quick cURL
 
@@ -389,10 +383,10 @@ curl -s -X POST "$BASE/api.sendgrid.com/v3/mail/send" \
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `401 Unauthorized` | Bad/missing key | Check `JENTIC_API_KEY` / `JENTIC_MINI_API_KEY` is set correctly |
+| `401 Unauthorized` | Bad/missing key | Check `JENTIC_API_KEY` is set correctly |
 | `404` on broker URL | API not registered | Import spec via credential add (catalog) or manual import |
 | Credential not injected | Credential not bound to toolkit | Bind credential to toolkit via UI or API |
-| Connection refused | Wrong URL or service down | Check `JENTIC_URL` / `JENTIC_MINI_URL`. For mini: `docker compose ps` and `docker compose logs` |
+| Connection refused | Wrong URL or service down | Check `JENTIC_URL`. For mini: `docker compose ps` and `docker compose logs` |
 | `docker compose up` fails | Missing `JENTIC_HOST_PATH` | Set it to the absolute host path of the jentic-mini directory |
 | Key lost / not captured | Default key shown once only | Human must regenerate via Jentic Mini UI (Keys section) |
 | `/default-api-key/generate` returns error | Key already claimed | Check if key was already issued. Human can regenerate via UI. |

@@ -4,17 +4,20 @@
 # dependencies = ["httpx", "click"]
 # ///
 """
-jentic-mini.py — CLI client for a Jentic Mini (self-hosted) instance.
+jentic.py — CLI client for the Jentic API (hosted or self-hosted jentic-mini).
 
 Usage:
-  uv run scripts/jentic-mini.py search "send an email"
-  uv run scripts/jentic-mini.py inspect GET/api.stripe.com/v1/payment_intents
-  uv run scripts/jentic-mini.py execute GET/api.github.com/repos/octocat/Hello-World
-  uv run scripts/jentic-mini.py --json search "create a payment"
+  uv run scripts/jentic.py search "send an email"
+  uv run scripts/jentic.py inspect GET/api.stripe.com/v1/payment_intents
+  uv run scripts/jentic.py execute GET/api.github.com/repos/octocat/Hello-World
+  uv run scripts/jentic.py apis
+  uv run scripts/jentic.py --json search "create a payment"
 
 Environment:
-  JENTIC_MINI_URL      Base URL of your Jentic Mini instance (default: http://localhost:8900)
-  JENTIC_MINI_API_KEY  Toolkit key (tk_...) or admin key for your instance
+  JENTIC_URL      Base URL of your Jentic instance
+                  Hosted:     https://api.jentic.com/v2  (default if unset)
+                  Jentic Mini: http://localhost:8900
+  JENTIC_API_KEY  Your API key (ak_... for hosted, tk_... for jentic-mini)
 """
 
 import json
@@ -24,8 +27,8 @@ import sys
 import click
 import httpx
 
-BASE_URL = os.environ.get("JENTIC_MINI_URL", "http://localhost:8900").rstrip("/")
-API_KEY = os.environ.get("JENTIC_MINI_API_KEY", "")
+BASE_URL = os.environ.get("JENTIC_URL", "https://api.jentic.com/v2").rstrip("/")
+API_KEY = os.environ.get("JENTIC_API_KEY", "")
 
 HEADERS = {"X-Jentic-API-Key": API_KEY} if API_KEY else {}
 
@@ -103,20 +106,22 @@ def inspect(ctx, capability_id):
 @click.option("--simulate", is_flag=True, default=False, help="Simulate — don't send to upstream API")
 @click.pass_context
 def execute(ctx, capability_id, inputs, simulate):
-    """Execute an operation or workflow via the broker."""
-    # For operations, the broker URL pattern is /{upstream_host}/{path}
-    # capability_id format: METHOD/host/path → broker URL: /host/path (with method as HTTP verb)
-    # For workflows, use POST /{jentic_host}/workflows/{slug}
+    """Execute an operation or workflow via the broker.
+
+    capability_id format: METHOD/host/path (e.g. GET/api.github.com/repos/octocat/Hello-World)
+    """
     try:
         inputs_dict = json.loads(inputs)
     except json.JSONDecodeError:
-        click.echo(f"Error: --inputs must be valid JSON", err=True)
+        click.echo("Error: --inputs must be valid JSON", err=True)
         sys.exit(1)
 
-    # Parse capability_id to get broker URL and method
     parts = capability_id.split("/", 1)
     if len(parts) != 2:
-        click.echo(f"Error: capability_id must be METHOD/host/path (e.g. GET/api.stripe.com/v1/customers)", err=True)
+        click.echo(
+            "Error: capability_id must be METHOD/host/path (e.g. GET/api.stripe.com/v1/customers)",
+            err=True,
+        )
         sys.exit(1)
 
     method, rest = parts
@@ -126,8 +131,6 @@ def execute(ctx, capability_id, inputs, simulate):
     if simulate:
         extra_headers["X-Jentic-Simulate"] = "true"
 
-    # Split inputs into path params (used to format URL) and body/query
-    # For now, pass all as query params for GET, body for POST/PUT/PATCH
     if method.upper() in ("GET", "DELETE", "HEAD"):
         r = httpx.request(method.upper(), broker_url, headers=extra_headers, params=inputs_dict, timeout=60)
     else:
