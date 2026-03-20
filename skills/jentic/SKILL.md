@@ -65,13 +65,17 @@ openclaw config set skills.entries.jentic.apiKey "<THE_KEY_USER_PROVIDED>"
 
 If `openclaw config set` is not available, edit the OpenClaw config JSON directly to add the key under `skills.entries.jentic.apiKey`.
 
-**3. Download the client script:**
+**3. Install the client script:**
+
+The script is included with this skill at `scripts/jentic.py` (relative to the skill directory). Copy it to your workspace `scripts/` directory:
 
 ```bash
 mkdir -p scripts
-curl -s https://raw.githubusercontent.com/jentic/jentic-skills/main/skills/jentic/scripts/jentic.py \
-  -o scripts/jentic.py && chmod +x scripts/jentic.py
+# SKILL_DIR is the directory containing this SKILL.md file
+cp "$SKILL_DIR/scripts/jentic.py" scripts/jentic.py && chmod +x scripts/jentic.py
 ```
+
+If `SKILL_DIR` is not set, locate the skill directory via your OpenClaw skills config and use the full path.
 
 **4. Install uv if not present:**
 
@@ -244,12 +248,13 @@ export JENTIC_URL="http://localhost:8900"
 > export JENTIC_MINI_API_KEY="$AGENT_KEY"
 > ```
 
-**8. Download the client script:**
+**8. Install the client script:**
+
+The script is included with this skill. Copy it to your workspace `scripts/` directory:
 
 ```bash
 mkdir -p scripts
-curl -s https://raw.githubusercontent.com/jentic/jentic-skills/main/skills/jentic/scripts/jentic.py \
-  -o scripts/jentic.py && chmod +x scripts/jentic.py
+cp "$SKILL_DIR/scripts/jentic.py" scripts/jentic.py && chmod +x scripts/jentic.py
 ```
 
 **9. Install uv if not present:**
