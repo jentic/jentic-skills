@@ -65,17 +65,15 @@ openclaw config set skills.entries.jentic.apiKey "<THE_KEY_USER_PROVIDED>"
 
 If `openclaw config set` is not available, edit the OpenClaw config JSON directly to add the key under `skills.entries.jentic.apiKey`.
 
-**3. Install the client script:**
+**3. Locate the client script:**
 
-The script is included with this skill at `scripts/jentic.py` (relative to the skill directory). Copy it to your workspace `scripts/` directory:
+The script ships with this skill at `scripts/jentic.py` inside the skill directory. Note the full path — you'll use it directly:
 
 ```bash
-mkdir -p scripts
-# SKILL_DIR is the directory containing this SKILL.md file
-cp "$SKILL_DIR/scripts/jentic.py" scripts/jentic.py && chmod +x scripts/jentic.py
+ls "$SKILL_DIR/scripts/jentic.py"
 ```
 
-If `SKILL_DIR` is not set, locate the skill directory via your OpenClaw skills config and use the full path.
+No copy needed. Run it in-place from the skill directory.
 
 **4. Install uv if not present:**
 
@@ -248,14 +246,9 @@ export JENTIC_URL="http://localhost:8900"
 > export JENTIC_MINI_API_KEY="$AGENT_KEY"
 > ```
 
-**8. Install the client script:**
+**8. Locate the client script:**
 
-The script is included with this skill. Copy it to your workspace `scripts/` directory:
-
-```bash
-mkdir -p scripts
-cp "$SKILL_DIR/scripts/jentic.py" scripts/jentic.py && chmod +x scripts/jentic.py
-```
+The script ships with this skill at `$SKILL_DIR/scripts/jentic.py`. No copy needed — run it in-place.
 
 **9. Install uv if not present:**
 
@@ -331,29 +324,31 @@ Every Jentic interaction follows three steps:
 
 ## Client Script Usage
 
+The script lives at `$SKILL_DIR/scripts/jentic.py` (where `$SKILL_DIR` is the directory containing this SKILL.md). Run it in-place:
+
 ```bash
 # Search for a capability
-uv run scripts/jentic.py search "send an email" --limit 5
+uv run $SKILL_DIR/scripts/jentic.py search "send an email" --limit 5
 
 # Inspect an operation — get schema and auth details
-uv run scripts/jentic.py inspect GET/api.github.com/repos/octocat/Hello-World
+uv run $SKILL_DIR/scripts/jentic.py inspect GET/api.github.com/repos/octocat/Hello-World
 
 # Execute an operation
-uv run scripts/jentic.py execute GET/api.github.com/repos/octocat/Hello-World
+uv run $SKILL_DIR/scripts/jentic.py execute GET/api.github.com/repos/octocat/Hello-World
 
 # Execute with inputs
-uv run scripts/jentic.py execute POST/api.stripe.com/v1/payment_intents \
+uv run $SKILL_DIR/scripts/jentic.py execute POST/api.stripe.com/v1/payment_intents \
   --inputs '{"amount": 2000, "currency": "usd"}'
 
 # Simulate (no upstream call)
-uv run scripts/jentic.py execute POST/api.stripe.com/v1/payment_intents \
+uv run $SKILL_DIR/scripts/jentic.py execute POST/api.stripe.com/v1/payment_intents \
   --inputs '{"amount": 2000}' --simulate
 
 # List registered APIs
-uv run scripts/jentic.py apis
+uv run $SKILL_DIR/scripts/jentic.py apis
 
 # Raw JSON output
-uv run scripts/jentic.py --json search "create a payment"
+uv run $SKILL_DIR/scripts/jentic.py --json search "create a payment"
 ```
 
 Capability IDs use the format `METHOD/host/path` (e.g. `GET/api.stripe.com/v1/customers`).
