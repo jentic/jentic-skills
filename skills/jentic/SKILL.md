@@ -90,11 +90,14 @@ If Docker is missing: `curl -fsSL https://get.docker.com | sudo sh && sudo userm
 
 ```bash
 if [ -d "$HOME/jentic-mini" ]; then
-  cd $HOME/jentic-mini && git pull
+  echo "Found existing jentic-mini at $HOME/jentic-mini"
+  cd $HOME/jentic-mini && git pull 2>/dev/null || echo "(git pull skipped — not a git repo or no remote access)"
 else
   git clone https://github.com/jentic/jentic-mini.git $HOME/jentic-mini
 fi
 ```
+
+> **Note:** `jentic/jentic-mini` is currently a private repository. If the clone fails with a 404 or auth error, ask the user to provide the jentic-mini directory manually (e.g. copied from another machine). Place it at `~/jentic-mini` and re-run from step 3.
 
 **3. Build and start:**
 
