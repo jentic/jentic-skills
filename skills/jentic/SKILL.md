@@ -86,18 +86,13 @@ docker --version && docker compose version
 
 If Docker is missing: `curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER && newgrp docker`
 
-**2. Clone or update:**
+**2. Verify jentic-mini is present:**
 
 ```bash
-if [ -d "$HOME/jentic-mini" ]; then
-  echo "Found existing jentic-mini at $HOME/jentic-mini"
-  cd $HOME/jentic-mini && git pull 2>/dev/null || echo "(git pull skipped — not a git repo or no remote access)"
-else
-  git clone https://github.com/jentic/jentic-mini.git $HOME/jentic-mini
-fi
+ls $HOME/jentic-mini/compose.yml
 ```
 
-> **Note:** `jentic/jentic-mini` is currently a private repository. If the clone fails with a 404 or auth error, ask the user to provide the jentic-mini directory manually (e.g. copied from another machine). Place it at `~/jentic-mini` and re-run from step 3.
+If not found, ask the user to place the jentic-mini directory at `~/jentic-mini` before continuing.
 
 **3. Build and start:**
 
