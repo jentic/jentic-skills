@@ -16,6 +16,31 @@ This skill works against either:
 
 The API is identical for both. Set `JENTIC_URL` and `JENTIC_API_KEY` once; the rest is transparent.
 
+## 🔒 Security Model — Read Before Setup
+
+Jentic Mini has a strict two-actor trust boundary. **Never cross it.**
+
+| Actor | Auth mechanism | Can do |
+|---|---|---|
+| **Agent (you)** | `X-Jentic-API-Key: tk_xxx` | Search, inspect, execute, submit permission requests |
+| **Human (user)** | Username + password → UI session | Approve permission requests, manage credentials, add OAuth brokers |
+
+### Hard rules — no exceptions
+
+1. **Never ask the user for their Jentic Mini password.** The password is for human-only operations. An agent that knows the password can self-approve its own permission escalations — exactly the attack the system is designed to prevent.
+
+2. **Never use a human session cookie** (obtained via `POST /user/login`) to approve your own access requests, add credentials, or set policies. This bypasses the human oversight model entirely.
+
+3. **When you need expanded permissions:** call `POST /toolkits/{id}/access-requests` with your agent key to *request* access, then tell the user to approve it in the Jentic Mini UI at `http://localhost:8900`. Do not ask for the password to approve it yourself.
+
+4. **When setting up OAuth brokers or credentials:** instruct the user to do it via the Jentic Mini UI. Walk them through the UI steps. Do not ask for their password to do it via the API.
+
+5. **Never make direct database edits** (`docker exec ... sqlite3`) to work around permission checks. If the normal API flow doesn't support what you need, surface that as a limitation and ask the user to do it manually. (Direct DB access for debugging is fine; bypassing auth controls is not.)
+
+> **Why this matters:** The threat model for Jentic Mini is prompt injection — an attacker injects instructions into data you process (e.g. an email body), causing you to escalate your own privileges. The human approval step is the mitigation. Bypassing it defeats the entire security model.
+
+---
+
 ## ⚠️ Conflict Check — Run First
 
 Before doing anything else, check for a configuration conflict:
@@ -98,7 +123,7 @@ If not found, ask the user to place the jentic-mini directory at `~/jentic-mini`
 
 ```bash
 cd $HOME/jentic-mini
-JENTIC_HOST_PATH=$(pwd) docker compose up -d --build
+sudo JENTIC_HOST_PATH=$(pwd) docker compose up -d --build
 ```
 
 > `JENTIC_HOST_PATH` must be the absolute host path — the compose file uses it for bind mounts.
@@ -112,7 +137,7 @@ for i in $(seq 1 12); do
 done
 ```
 
-If it doesn't come up: `docker compose logs jentic-mini`
+If it doesn't come up: `sudo docker compose -f $HOME/jentic-mini/compose.yml logs jentic-mini`
 
 **5. Get an agent key:**
 
@@ -149,7 +174,40 @@ An empty results array is fine for a fresh instance — it means the connection 
 **9.** Update TOOLS.md with the standard Jentic block (see end of this file), noting jentic-mini URL and reset command.
 
 **10.** Confirm:
-> "Jentic Mini is running at http://localhost:8900. Agent key stored. Add API credentials via the UI or API to start using the catalog (~1,044 APIs available). Reset anytime: `cd ~/jentic-mini && docker compose down -v && JENTIC_HOST_PATH=$(pwd) docker compose up -d --build`"
+> "Jentic Mini is running at http://localhost:8900. Agent key stored. Add API credentials via the UI to start using the catalog. Reset anytime: `cd ~/jentic-mini && sudo docker compose down -v && sudo JENTIC_HOST_PATH=$(pwd) docker compose up -d --build`"
+
+---
+
+## Connecting APIs (Credentials & OAuth)
+
+**All credential and OAuth broker management must be done by the human via the Jentic Mini UI at `http://localhost:8900`.** The agent key does not have permission to create credentials or brokers, and this is intentional.
+
+### For OAuth APIs (Gmail, Google Calendar, GitHub, etc.)
+
+Walk the user through these steps in the UI:
+
+1. **Add an OAuth broker** — Settings → OAuth Brokers → Add. For Pipedream: provide Client ID, Client Secret, and Project ID from [pipedream.com/connect](https://pipedream.com/connect).
+
+2. **Generate a connect link** — OAuth Brokers → your broker → Connect Account → select the app (e.g. `gmail`). This produces a link the user clicks to authorize via Google/GitHub/etc.
+
+3. **Sync** — after the user authorizes, click Sync in the UI to pull the token into the vault.
+
+4. **Approve agent access** — the agent will submit a permission request (`POST /toolkits/default/access-requests`). The user approves it in the UI under Toolkits → Access Requests.
+
+### For API key APIs (Stripe, SendGrid, etc.)
+
+Walk the user through: Credentials → Add Credential → paste their API key → bind to the default toolkit.
+
+### Requesting expanded permissions
+
+When the agent needs access to a credential or expanded write permissions:
+
+1. Agent calls `POST /toolkits/default/access-requests` with the agent key to submit a request
+2. Agent tells the user: "I've submitted a permission request in Jentic Mini — please approve it at http://localhost:8900 under Toolkits → Access Requests"
+3. User approves in the UI
+4. Agent proceeds
+
+**Do not ask the user for their password to shortcut this flow.**
 
 ---
 
@@ -222,6 +280,15 @@ curl -sf -X POST "$JENTIC_URL/api.stripe.com/v1/payment_intents" \
   -d '{"amount":2000,"currency":"usd"}' | python3 -m json.tool
 ```
 
+**Pipedream OAuth APIs — specify which user's account to use:**
+```bash
+curl -sf "$JENTIC_URL/gmail.googleapis.com/gmail/v1/users/me/messages" \
+  -H "X-Jentic-API-Key: $JENTIC_API_KEY" \
+  -H "X-Jentic-External-User-Id: <your-username>" | python3 -m json.tool
+```
+
+> The `X-Jentic-External-User-Id` header is required when calling Pipedream OAuth APIs (Gmail, Google Calendar, GitHub, etc.) on Jentic Mini. It tells the broker which connected account to use. Set it to the username you used when connecting the account in the UI (e.g. your Jentic Mini username). This is a known limitation tracked in [jentic-mini#2](https://github.com/jentic/jentic-mini/issues/2).
+
 ### List registered APIs
 
 ```bash
@@ -236,11 +303,12 @@ curl -sf "$JENTIC_URL/apis" \
 | Situation | Action |
 |-----------|--------|
 | Need an external API capability | `search` first — don't hardcode capability IDs |
-| Execute fails with auth error | Add/grant credential in Jentic (hosted UI or mini vault) |
-| API not in catalog | Hosted: add via jentic.com. Mini: `POST /credentials` with `api_id` for a catalog API (auto-imports spec), or `POST /import` with an OpenAPI spec URL |
+| Execute fails with auth error | Add/grant credential in Jentic Mini UI (never via agent) |
+| API not in catalog | Hosted: add via jentic.com. Mini: add credential via UI — spec is auto-imported |
 | Want to test without real API calls | Add `-H "X-Jentic-Simulate: true"` to the execute call |
 | Need to generate an Arazzo workflow from a goal | Use the `jentic-workflows` skill |
-| Fresh jentic-mini, no APIs showing | Add credentials for a catalog API — spec and workflows are auto-imported |
+| Fresh jentic-mini, no APIs showing | Add credentials via the UI — spec and workflows are auto-imported |
+| Pipedream OAuth call returns 403 or auth error | Add `-H "X-Jentic-External-User-Id: <username>"` to the call |
 
 ---
 
@@ -249,12 +317,14 @@ curl -sf "$JENTIC_URL/apis" \
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `401 Unauthorized` | Bad/missing key | Check `JENTIC_API_KEY` is exported |
-| `404` on broker URL | API not registered | Import via credential add or manual import |
-| Credential not injected | Cred not bound to toolkit | Bind via UI or API |
-| Connection refused | Wrong URL or service down | Check `JENTIC_URL`. For mini: `docker compose ps` |
+| `404` on broker URL | API not registered | Import via credential add in UI |
+| Credential not injected | Cred not bound to toolkit | Bind via UI |
+| Connection refused | Wrong URL or service down | Check `JENTIC_URL`. For mini: `sudo docker compose -f ~/jentic-mini/compose.yml ps` |
 | `docker compose up` fails | Missing `JENTIC_HOST_PATH` | Set to absolute host path of jentic-mini dir |
 | Key lost | Default key shown once only | Regenerate via Jentic Mini UI |
 | `/default-api-key/generate` error | Key already claimed | Regenerate via UI |
+| Pipedream OAuth 403 after credential setup | Missing `X-Jentic-External-User-Id` header | Add `-H "X-Jentic-External-User-Id: <username>"` — known issue, tracked in jentic-mini#2 |
+| `403 human_session_required` on setup endpoints | Agent key blocked from human-only ops | Use the Jentic Mini UI to complete this step — do not ask the user for their password |
 
 ---
 
