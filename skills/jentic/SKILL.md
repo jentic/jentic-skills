@@ -68,7 +68,51 @@ Ask the user:
 
 > "Which Jentic backend would you like to connect to?
 > 1. **Hosted Jentic** (jentic.com) — managed cloud service, best for production
-> 2. **Jentic Mini** (self-hosted) — runs locally via Docker, best for development and testing"
+> 2. **Jentic Mini** (self-hosted) — spin up a new instance via Docker
+> 3. **Jentic Mini** (already running) — connect to an existing instance"
+
+---
+
+### Step 2c: Jentic Mini (already running)
+
+**1.** Ask the user for the URL:
+
+> "What's the URL of your Jentic Mini instance? (default: `http://localhost:8900`)"
+
+Use `http://localhost:8900` if they don't specify.
+
+**2.** Test the connection:
+
+```bash
+JENTIC_URL="<url>"
+curl -sf "$JENTIC_URL/health" | python3 -m json.tool
+```
+
+If it fails: confirm the URL is correct and the instance is reachable. If behind a reverse proxy or on a remote host, ask the user to verify the address.
+
+**3.** Get an agent key:
+
+```bash
+KEY_RESPONSE=$(curl -sf -X POST "$JENTIC_URL/default-api-key/generate")
+AGENT_KEY=$(echo "$KEY_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['key'])")
+echo "Agent key: $AGENT_KEY"
+```
+
+If `/default-api-key/generate` returns an error (already claimed), the human must generate a new key via the Jentic Mini UI.
+
+**4.** Store and export:
+
+```bash
+export JENTIC_URL="<url>"
+export JENTIC_API_KEY="$AGENT_KEY"
+```
+
+Store both in OpenClaw config (edit `~/.openclaw/openclaw.json` under `skills.entries.jentic`).
+
+**5.** Update TOOLS.md with the standard Jentic block (see end of this file), noting the instance URL.
+
+**6.** Confirm:
+> "Connected to Jentic Mini at `<url>`. Agent key stored. You're ready to use the API catalog."
 
 ---
 
@@ -101,7 +145,7 @@ curl -sf "$JENTIC_URL/search?q=list+files&n=3" \
 
 ---
 
-### Step 2b: Jentic Mini (self-hosted)
+### Step 2b: Jentic Mini (Docker — new instance)
 
 **1. Check Docker is available:**
 
