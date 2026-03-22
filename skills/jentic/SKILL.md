@@ -272,6 +272,23 @@ export JENTIC_API_KEY="${JENTIC_API_KEY}"
 
 ---
 
+## Native HTTP Clients
+
+The broker acts as a transparent auth proxy: any tool that can set a base URL and inject custom HTTP headers can route through it. Replace `https://<api-host>` with `http://<broker>/<api-host>`, add `X-Jentic-API-Key`, and the broker injects the credential and forwards the request.
+
+**Git:**
+```bash
+git config --local http."http://<broker>/github.com/".extraheader \
+    "X-Jentic-API-Key: <key>"
+git remote set-url origin http://<broker>/github.com/<org>/<repo>.git
+```
+
+> **Credential policies block POST by default.** `git clone`/`pull` use `git-upload-pack` (a POST) — submit a `modify_permissions` access request before first use.
+
+Add `X-Jentic-Credential: <cred-id>` only if you have multiple credentials for the same host and need to pick one.
+
+---
+
 ## API Reference
 
 ### Search
