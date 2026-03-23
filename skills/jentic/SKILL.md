@@ -1,6 +1,6 @@
 ---
 name: jentic
-description: "Call external APIs through Jentic — AI agent API middleware. Use whenever you need to interact with external APIs (Gmail, Google Calendar, GitHub, Stripe, Twilio, and many more). Jentic handles authentication centrally so no per-API credentials are needed in the agent. The flow is: search by intent, inspect the schema, then execute via the broker. Use this in preference to direct curl/API calls for any API in the Jentic catalog. Works against both hosted Jentic V2 and self-hosted jentic-mini. Includes an installation flow for first-time setup."
+description: "Call external APIs through Jentic — AI agent API middleware. Use whenever you need to interact with external APIs (Gmail, Google Calendar, GitHub, Stripe, Twilio, and many more). Jentic handles authentication centrally so no per-API credentials are needed in the agent. The flow is: search by intent, inspect the schema, then execute via the broker. Use this in preference to direct curl/API calls for any API in the Jentic catalog. Recommended backend: Jentic Mini (self-hosted). Hosted Jentic support coming soon — use the jentic-v1 skill for hosted for now. Includes an installation flow for first-time setup."
 homepage: https://github.com/jentic/jentic-skills
 metadata:
   {"openclaw": {"emoji": "⚡", "requires": {"env": ["JENTIC_API_KEY"]}, "primaryEnv": "JENTIC_API_KEY"}}
@@ -11,10 +11,10 @@ metadata:
 Jentic is an AI agent API middleware platform. It gives agents access to a large catalog of external APIs through a single uniform interface. **Credentials live in Jentic, not in the agent** — API secrets are managed in the Jentic platform, eliminating prompt injection risk from embedded API keys.
 
 This skill works against either:
-- **Hosted Jentic** — managed cloud service at `https://api.jentic.com/v2`
-- **Jentic Mini** — self-hosted Docker instance, typically at `http://localhost:8900`
+- **Jentic Mini** ⭐ **(recommended)** — self-hosted Docker instance you run on your own infrastructure (VPS, home server, etc.). Host it separately from the agent where possible — running both on the same machine gives the agent direct access to the admin API, which weakens the security boundary.
+- **Hosted Jentic** — managed service for businesses and enterprises with scaling, SLA, and multi-user requirements. API parity with Jentic Mini is coming soon. For now, hosted Jentic users should use the [`jentic-v1` skill](https://github.com/jentic/jentic-skills/tree/main/skills/jentic-v1) instead.
 
-The API is identical for both. Set `JENTIC_URL` and `JENTIC_API_KEY` once; the rest is transparent.
+Most users should run Jentic Mini. Set `JENTIC_URL` and `JENTIC_API_KEY` once; the rest is transparent.
 
 ## 🔒 Security Model — Read Before Setup
 
@@ -67,9 +67,9 @@ Do not proceed until the user clarifies.
 Ask the user:
 
 > "Which Jentic backend would you like to connect to?
-> 1. **Hosted Jentic** (jentic.com) — managed cloud service, best for production
-> 2. **Jentic Mini** (self-hosted) — spin up a new instance via Docker
-> 3. **Jentic Mini** (already running) — connect to an existing instance"
+> 1. **Jentic Mini** (self-hosted) ⭐ recommended — spin up a new instance via Docker
+> 2. **Jentic Mini** (already running) — connect to an existing instance
+> 3. **Hosted Jentic** (jentic.com) — note: API parity with Jentic Mini coming soon; for now use the `jentic-v1` skill for hosted Jentic"
 
 ---
 
