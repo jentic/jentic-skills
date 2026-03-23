@@ -33,7 +33,7 @@ Jentic Mini has a strict two-actor trust boundary. **Never cross it.**
 
 3. **When you need expanded permissions:** call `POST /toolkits/{id}/access-requests` with your agent key to *request* access, then tell the user to approve it in the Jentic Mini UI at `http://localhost:8900`. Do not ask for the password to approve it yourself.
 
-4. **When setting up OAuth brokers or credentials:** instruct the user to do it via the Jentic Mini UI. Walk them through the UI steps. Do not ask for their password to do it via the API.
+4. **When setting up OAuth brokers or credentials:** the agent can call the API to create brokers and generate connect links — but only at explicit user request, not autonomously. The flow is: (a) search the catalog to identify the right API and its `api_id`, (b) call `POST /oauth-brokers/{id}/connect-link` with the app slug and `api_id`, (c) send the connect link to the user to complete OAuth authorization in their browser. The user must click through the OAuth flow themselves — this is not automatable and is intentional. Never initiate credential setup on your own initiative.
 
 5. **Never make direct database edits** (`docker exec ... sqlite3`) to work around permission checks. If the normal API flow doesn't support what you need, surface that as a limitation and ask the user to do it manually. (Direct DB access for debugging is fine; bypassing auth controls is not.)
 
