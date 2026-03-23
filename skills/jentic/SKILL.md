@@ -211,6 +211,21 @@ curl -H "X-Jentic-API-Key: <key>" -H "X-Jentic-Simulate: true" \
 curl -H "X-Jentic-API-Key: <key>" "{JENTIC_URL}/apis"
 ```
 
+**Native HTTP clients (curl, git, etc.):**
+
+The broker acts as a transparent auth proxy: any tool that can set a base URL and inject custom HTTP headers can route through it. Replace `https://<api-host>` with `{JENTIC_URL}/<api-host>`, add `X-Jentic-API-Key`, and the broker injects the credential and forwards the request.
+
+```bash
+# Git — route through broker
+git config --local http."{JENTIC_URL}/github.com/".extraheader \
+  "X-Jentic-API-Key: <key>"
+git remote set-url origin {JENTIC_URL}/github.com/<org>/<repo>.git
+```
+
+> **Credential policies block POST by default.** `git clone`/`pull` use `git-upload-pack` (a POST) — submit a `modify_permissions` access request before first use.
+
+Add `X-Jentic-Credential: <cred-id>` only if you have multiple credentials for the same host and need to pick one.
+
 **Connecting a new OAuth API (e.g. Gmail, Google Calendar, GitHub):**
 
 First, check a broker exists: `GET {JENTIC_URL}/oauth-brokers` — if the list is empty, ask the user to add an OAuth broker via the Jentic Mini UI (Settings → OAuth Brokers → Add). For Pipedream they'll need a Client ID, Client Secret, and Project ID from [pipedream.com/connect](https://pipedream.com/connect). The broker only needs to be set up once. Once a broker exists, use its `id` in the steps below.
