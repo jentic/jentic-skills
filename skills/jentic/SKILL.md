@@ -83,7 +83,7 @@ Stop here until the user returns with a running instance.
 
 Warn the user:
 
-> "Running Jentic Mini on the same machine as your OpenClaw instance weakens the security boundary — the agent has direct network access to the admin API. This is fine for development and testing, but not recommended for production use. Proceed?"
+> "Warning: Running Jentic Mini on the same machine as your OpenClaw instance means the agent has access to the Docker environment directly. It can `docker exec` into the container and read or modify the database, bypassing the security model entirely. This is fine for development and testing where you trust the agent fully, but must not be used in production. Proceed?"
 
 If they confirm, follow the Docker setup:
 
