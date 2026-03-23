@@ -403,6 +403,8 @@ curl -H "X-Jentic-API-Key: <key>" \
 
 **If no Jentic operation exists for the task:** ask the user how to proceed.
 Never store API keys or credentials independently.
+
+**API reference:** Full OpenAPI spec at `{JENTIC_URL}/openapi.json` (live, always current for your instance). Static reference: https://github.com/jentic/jentic-mini/blob/main/ui/openapi.json
 ```
 
 ---
