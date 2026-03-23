@@ -8,34 +8,17 @@ Skills in this repo are designed for anyone building with Jentic. They require a
 
 | Skill | Description |
 |-------|-------------|
-| [jentic](skills/jentic/) | The current Jentic skill (V2 API) — works against hosted Jentic V2 or self-hosted jentic-mini. Single `JENTIC_API_KEY` + optional `JENTIC_URL` for backend selection. Use this for all new installs. |
-| [jentic-v1](skills/jentic-v1/) | Legacy V1 skill for installs still on the original hosted Jentic API (`JENTIC_AGENT_API_KEY`). Use only if you haven't migrated to V2 yet. |
+| [jentic](skills/jentic/) | The recommended Jentic skill — designed for self-hosted [Jentic Mini](https://github.com/jentic/jentic-mini). Use this for all new installs. |
+| [jentic-v1](skills/jentic-v1/) | For hosted Jentic (jentic.com). API parity with Jentic Mini coming soon — use this skill if you're on hosted Jentic for now. |
 | [jentic-workflows](skills/jentic-workflows/) | Generate Arazzo 1.0.1 workflow YAML from a natural-language goal or agent tool trace. Handles API discovery via Jentic, Arazzo linting with `@jentic/arazzo-validator`, and semantic validation. |
 
 ## Installation
 
-Paste this into your OpenClaw agent to install all Jentic skills:
+Ask your OpenClaw agent:
 
-```
-Clone https://github.com/jentic/jentic-skills.git into ~/.openclaw/skills/jentic-skills and add ~/.openclaw/skills/jentic-skills/skills to skills.load.extraDirs in ~/.openclaw/openclaw.json
-```
+> "Install the jentic skills from https://github.com/jentic/jentic-skills"
 
-Or manually:
-
-```bash
-git clone https://github.com/jentic/jentic-skills.git ~/.openclaw/skills/jentic-skills
-```
-
-Then add to your `~/.openclaw/openclaw.json`:
-```json
-{
-  "skills": {
-    "load": {
-      "extraDirs": ["~/.openclaw/skills/jentic-skills/skills"]
-    }
-  }
-}
-```
+The agent will clone the repo and configure your OpenClaw install.
 
 ## Contributing
 
