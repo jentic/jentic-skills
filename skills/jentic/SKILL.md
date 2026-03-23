@@ -141,7 +141,7 @@ curl -sf "$JENTIC_URL/search?q=list+files&n=3" \
 **4.** Update TOOLS.md with the standard Jentic block (see end of this file).
 
 **5.** Confirm:
-> "Hosted Jentic is configured. Use `search`, `inspect`, and `execute` to interact with the API catalog."
+> "Hosted Jentic is configured. Use `search` and `inspect` to find operations, then call the upstream API host directly through the broker proxy."
 
 ---
 
