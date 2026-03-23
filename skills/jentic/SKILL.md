@@ -58,7 +58,7 @@ Ask the user:
 >
 > 1. **Jentic Mini on a separate machine** ⭐ recommended — self-hosted on a VPS, home server, or any machine other than this one. Keeps a hard boundary between the agent and the credential store, so the agent can never bypass the security model.
 >
-> 2. **Jentic Mini on this machine** — runs alongside your OpenClaw instance. Fine for development and testing, but not recommended for production use: the agent has direct network access to the admin API, which weakens the security boundary.
+> 2. **Jentic Mini on this machine** — runs alongside your OpenClaw instance. Fine for development and testing, but not recommended for production use: the agent has access to the Docker environment directly and can `docker exec` into the container to read or modify the database, bypassing the security model entirely.
 >
 > 3. **Hosted Jentic** (jentic.com) — managed service for businesses and enterprises. API parity with Jentic Mini coming soon; for now use the `jentic-v1` skill for hosted Jentic."
 
