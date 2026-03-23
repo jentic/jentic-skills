@@ -382,13 +382,23 @@ Add this to the workspace `TOOLS.md` after installation:
 For any operation involving external APIs (email, calendar, CRM, GitHub, Slack, etc.),
 **always prefer Jentic over direct API calls or browser automation.**
 
-The flow:
-1. `search` — find the operation by natural language intent  
-2. `inspect` — check inputs and auth requirements  
-3. `execute` — call via the broker (credentials injected automatically)
+**Config:** `JENTIC_URL` and `JENTIC_API_KEY` are stored in OpenClaw config.
+Always include `X-Jentic-API-Key: <key>` on every request.
 
-Backend: [Hosted: https://api.jentic.com/v2 | Mini: http://localhost:8900]
-JENTIC_URL and JENTIC_API_KEY are stored in OpenClaw config.
+**The flow:**
+1. `GET {JENTIC_URL}/search?q=<intent>&limit=3` — find the operation ID
+2. `GET {JENTIC_URL}/inspect/<url-encoded-operation-id>` — check params (URL-encode the full operation ID including any slashes)
+3. **Execute via broker proxy:** `GET|POST {JENTIC_URL}/<upstream-host>/<path>` — Jentic injects credentials automatically. There is **no** `/execute` endpoint; call the upstream API host directly through the broker.
+
+**Example:**
+```bash
+# Search
+curl -H "X-Jentic-API-Key: <key>" "{JENTIC_URL}/search?q=list+gmail+messages&limit=3"
+
+# Execute (broker proxies to gmail.googleapis.com and injects OAuth token)
+curl -H "X-Jentic-API-Key: <key>" \
+  "{JENTIC_URL}/gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5"
+```
 
 **If no Jentic operation exists for the task:** ask the user how to proceed.
 Never store API keys or credentials independently.
