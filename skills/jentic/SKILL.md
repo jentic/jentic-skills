@@ -212,6 +212,9 @@ curl -H "X-Jentic-API-Key: <key>" "{JENTIC_URL}/apis"
 ```
 
 **Connecting a new OAuth API (e.g. Gmail, Google Calendar, GitHub):**
+
+First, check a broker exists: `GET {JENTIC_URL}/oauth-brokers` — if the list is empty, ask the user to add an OAuth broker via the Jentic Mini UI (Settings → OAuth Brokers → Add). For Pipedream they'll need a Client ID, Client Secret, and Project ID from [pipedream.com/connect](https://pipedream.com/connect). The broker only needs to be set up once. Once a broker exists, use its `id` in the steps below.
+
 1. Search catalog: `GET {JENTIC_URL}/catalog?q=<service>` — find the `api_id`
 2. Get connect link: `POST {JENTIC_URL}/oauth-brokers/{broker_id}/connect-link` with `{"app_slug": "<slug>", "api_id": "<catalog_api_id>"}`
 3. Send the connect link to the user — they must complete OAuth in their browser
