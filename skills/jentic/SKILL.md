@@ -196,3 +196,4 @@ The content to append to `TOOLS.md` lives in `references/tools-block.md` in this
 - [Jentic Mini AUTH docs](https://github.com/jentic/jentic-mini/blob/main/docs/AUTH.md)
 - [Jentic Mini CREDENTIALS docs](https://github.com/jentic/jentic-mini/blob/main/docs/CREDENTIALS.md)
 - [Jentic Skills repo](https://github.com/jentic/jentic-skills)
+
