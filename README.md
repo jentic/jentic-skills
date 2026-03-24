@@ -14,11 +14,11 @@ Skills in this repo are designed for anyone building with Jentic. They require a
 
 ## Installation
 
-Ask your OpenClaw agent:
+To install and set up the `jentic` skill, send this message to your OpenClaw agent:
 
-> "Install the jentic skills from https://github.com/jentic/jentic-skills"
+> "Install the Jentic skill from https://github.com/jentic/jentic-skills/tree/main/skills/jentic into your workspace skills directory, then run the Jentic setup flow."
 
-The agent will clone the repo and configure your OpenClaw install.
+The agent will install the skill and walk you through connecting it to your Jentic Mini instance.
 
 ## Contributing
 
