@@ -72,8 +72,29 @@ Ask the user:
 
 **If yes:** ask for the URL, then follow the connect flow in Step 3.
 
-**If no:**
-> "You'll need to install Jentic Mini on a separate machine first. Follow the installation guide at https://github.com/jentic/jentic-mini — come back here once it's running and you have the URL and agent key."
+**If no:** ask:
+
+> "Would you like help setting one up?
+>
+> 1. **DigitalOcean droplet** — spin up a $6/month VPS in ~5 minutes using our setup script. I'll walk you through it.
+> 2. **Somewhere else** — I'll point you to the install docs and you can come back once it's running."
+
+**If option 1 (DigitalOcean):** walk the user through the following steps:
+
+> "Here's how to get Jentic Mini running on a DigitalOcean droplet:
+>
+> Full guide: https://github.com/jentic/jentic-mini/blob/main/docs/deploy/digitalocean/README.md
+>
+> Short version:
+> 1. Create an Ubuntu 22.04 or 24.04 droplet (Basic, $6/month is enough)
+> 2. Under Advanced Options, check **Add Initialization scripts** and paste the contents of: https://raw.githubusercontent.com/jentic/jentic-mini/main/docs/deploy/digitalocean/setup.sh
+> 3. Wait ~5 minutes for the droplet to boot and the script to run
+> 4. Come back with the droplet's public IP"
+
+Wait for the user to return with the IP, then continue to Step 3.
+
+**If option 2 (somewhere else):**
+> "Install docs: https://github.com/jentic/jentic-mini — come back with the URL once it's running."
 
 Stop here until the user returns with a running instance.
 
@@ -87,21 +108,23 @@ Warn the user:
 
 If they confirm, follow the Docker setup:
 
-**1. Check Docker is available:**
+**1. Ensure Docker is available:**
 
 ```bash
 docker --version && docker compose version
 ```
 
-If Docker is missing: `curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER && newgrp docker`
-
-**2. Verify jentic-mini is present:**
+If Docker is missing, install it:
 
 ```bash
-ls $HOME/jentic-mini/compose.yml
+curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER && newgrp docker
 ```
 
-If not found, ask the user to clone it: `git clone https://github.com/jentic/jentic-mini ~/jentic-mini`
+**2. Install jentic-mini:**
+
+```bash
+ls $HOME/jentic-mini/compose.yml 2>/dev/null || git clone https://github.com/jentic/jentic-mini ~/jentic-mini
+```
 
 **3. Build and start:**
 
