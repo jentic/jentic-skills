@@ -18,5 +18,11 @@ jobs:
       - name: Login to ClawHub
         run: clawhub login --token ${{ secrets.CLAWHUB_API_TOKEN }} --no-browser
 
+      - name: Extract version from SKILL.md
+        id: version
+        run: |
+          VERSION=$(grep '^version:' skills/jentic/SKILL.md | head -1 | sed 's/version: *//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Publish jentic skill
-        run: clawhub --no-input publish skills/jentic --slug jentic --name "Jentic" --changelog "${{ github.event.head_commit.message }}"
+        run: clawhub --no-input publish skills/jentic --slug jentic --name "Jentic" --version "${{ steps.version.outputs.version }}" --changelog "${{ github.event.head_commit.message }}"
