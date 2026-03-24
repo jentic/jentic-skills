@@ -1,0 +1,22 @@
+name: Publish jentic skill to ClawHub
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'skills/jentic/**'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clawhub CLI
+        run: npm install -g clawhub
+
+      - name: Login to ClawHub
+        run: clawhub login --token ${{ secrets.CLAWHUB_API_TOKEN }} --no-browser
+
+      - name: Publish jentic skill
+        run: clawhub --no-input publish skills/jentic --slug jentic --name "Jentic" --changelog "${{ github.event.head_commit.message }}"
