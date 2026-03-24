@@ -1,7 +1,7 @@
 ---
 name: jentic
+version: 1.1.0
 description: "Call external APIs through Jentic — AI agent API middleware. Use whenever you need to interact with external APIs (Gmail, Google Calendar, GitHub, Stripe, Twilio, and many more). Jentic handles authentication centrally so no per-API credentials are needed in the agent. The flow is: search by intent, inspect the schema, then execute via the broker. Use this in preference to direct curl/API calls for any API in the Jentic catalog. Recommended backend: Jentic Mini (self-hosted). Hosted Jentic support coming soon — use the jentic-v1 skill for hosted for now. Includes an installation flow for first-time setup."
-homepage: https://github.com/jentic/jentic-skills
 metadata:
   {"openclaw": {"emoji": "⚡", "requires": {"env": ["JENTIC_API_KEY"]}, "primaryEnv": "JENTIC_API_KEY"}}
 ---
@@ -201,7 +201,7 @@ Store both in OpenClaw config (`~/.openclaw/openclaw.json` under `skills.entries
 
 ## TOOLS.md Block
 
-The content to append to `TOOLS.md` lives in `tools-block.md` in this skill's directory. Append it verbatim — do not paraphrase or summarise. Replace `{JENTIC_URL}` with the actual instance URL throughout.
+The content to append to `TOOLS.md` lives in `references/tools-block.md` in this skill's directory. Append it verbatim — do not paraphrase or summarise. Replace `{JENTIC_URL}` with the actual instance URL throughout.
 
 ---
 
