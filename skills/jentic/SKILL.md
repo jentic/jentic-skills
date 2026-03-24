@@ -1,6 +1,6 @@
 ---
 name: jentic
-version: 1.1.2
+version: 1.1.3
 description: "Call external APIs through Jentic — AI agent API middleware. Use whenever you need to interact with external APIs (Gmail, Google Calendar, GitHub, Stripe, Twilio, and many more). Jentic handles authentication centrally so no per-API credentials are needed in the agent. The flow is: search by intent, inspect the schema, then execute via the broker. Use this in preference to direct curl/API calls for any API in the Jentic catalog. Recommended backend: Jentic Mini (self-hosted). Hosted Jentic support coming soon — use the jentic-v1 skill for hosted for now. Includes an installation flow for first-time setup."
 homepage: https://github.com/jentic/jentic-skills
 metadata:
@@ -104,20 +104,18 @@ If Docker is missing, install it:
 curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER && newgrp docker
 ```
 
-**2. Install jentic-mini:**
+**2. Pull and start Jentic Mini from Docker Hub:**
 
 ```bash
-ls $HOME/jentic-mini/compose.yml 2>/dev/null || git clone https://github.com/jentic/jentic-mini ~/jentic-mini
+docker run -d \
+  --name jentic-mini \
+  --restart unless-stopped \
+  -p 8900:8900 \
+  -v jentic-mini-data:/app/data \
+  jentic/jentic-mini
 ```
 
-**3. Build and start:**
-
-```bash
-cd $HOME/jentic-mini
-sudo JENTIC_HOST_PATH=$(pwd) docker compose up -d --build
-```
-
-**4. Wait for it to be ready (up to 60s):**
+**3. Wait for it to be ready (up to 60s):**
 
 ```bash
 for i in $(seq 1 12); do
@@ -126,9 +124,9 @@ for i in $(seq 1 12); do
 done
 ```
 
-If it doesn't come up: `sudo docker compose -f $HOME/jentic-mini/compose.yml logs jentic-mini`
+If it doesn't come up: `docker logs jentic-mini`
 
-**5.** Set URL to `http://localhost:8900` and follow Step 3 to get the agent key and store config.
+**4.** Set URL to `http://localhost:8900` and follow Step 3 to get the agent key and store config.
 
 ---
 
