@@ -195,6 +195,8 @@ Store both in OpenClaw config (`~/.openclaw/openclaw.json` under `skills.entries
 
 > **Note:** The API response from `/default-api-key/generate` may include a `setup_url` or `next_step` field referencing `/user/create` — ignore it. Direct the user to the root URL (`<url>`) only; the UI handles the rest.
 
+> **Note on credential binding:** The **default toolkit** implicitly contains **all credentials** — no explicit binding step is needed. Do not attempt to bind credentials to the default toolkit; it will work automatically once the user adds credentials via the UI. Only named/scoped toolkits require explicit credential binding via `POST /toolkits/{id}/credentials`, and that requires a human session.
+
 ---
 
 ## TOOLS.md Block
