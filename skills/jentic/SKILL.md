@@ -191,7 +191,9 @@ Store both in OpenClaw config (`~/.openclaw/openclaw.json` under `skills.entries
 **4.** Append `tools-block.md` (in this skill's directory) verbatim to the workspace `TOOLS.md`. Do not paraphrase or summarise — copy it exactly. Replace `{JENTIC_URL}` with the actual URL throughout.
 
 **5.** Confirm:
-> "Connected to Jentic Mini at `<url>`. Agent key stored. Add API credentials via the Jentic Mini UI to start using the catalog."
+> "Connected to Jentic Mini at `<url>`. Agent key stored. To finish setup, visit `<url>` in your browser to create your admin account. Once that's done, add API credentials via the Jentic Mini UI to start using the catalog."
+
+> **Note:** The API response from `/default-api-key/generate` may include a `setup_url` or `next_step` field referencing `/user/create` — ignore it. Direct the user to the root URL (`<url>`) only; the UI handles the rest.
 
 ---
 
