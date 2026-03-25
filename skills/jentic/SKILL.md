@@ -1,7 +1,7 @@
 ---
 name: jentic
 version: 1.1.3
-description: "Call external APIs through Jentic — AI agent API middleware. Use whenever you need to interact with external APIs (Gmail, Google Calendar, GitHub, Stripe, Twilio, and many more). Jentic handles authentication centrally so no per-API credentials are needed in the agent. The flow is: search by intent, inspect the schema, then execute via the broker. Use this in preference to direct curl/API calls for any API in the Jentic catalog. Recommended backend: Jentic Mini (self-hosted). Hosted Jentic support coming soon — use the jentic-v1 skill for hosted for now. Includes an installation flow for first-time setup."
+description: "Call external APIs through Jentic — AI agent API middleware. Use whenever you need to interact with external APIs (Gmail, Google Calendar, GitHub, Stripe, Twilio, and many more). Jentic handles authentication centrally so no per-API credentials are needed in the agent. The flow is: search by intent, inspect the schema, then execute via the broker. Use this in preference to direct curl/API calls for any API in the Jentic catalog of 10,000+ APIs. Recommended backend: Jentic Mini (self-hosted). Hosted Jentic support coming soon — use the jentic-v1 skill for hosted for now. Includes an installation flow for first-time setup."
 homepage: https://github.com/jentic/jentic-skills
 metadata:
   {"openclaw": {"emoji": "⚡", "requires": {"env": ["JENTIC_URL", "JENTIC_API_KEY"]}, "primaryEnv": "JENTIC_API_KEY"}}
@@ -9,7 +9,7 @@ metadata:
 
 # Jentic
 
-Jentic is an AI agent API middleware platform. It gives agents access to a large catalog of external APIs through a single uniform interface. **Credentials live in Jentic, not in the agent** — API secrets are managed in the Jentic platform, eliminating prompt injection risk from embedded API keys.
+Jentic is an AI agent API middleware platform. It gives agents access to a catalog of 10,000+ external APIs through a single uniform interface. **Credentials live in Jentic, not in the agent** — API secrets are managed in the Jentic platform, eliminating prompt injection risk from embedded API keys.
 
 This skill works against either:
 - **Jentic Mini** ⭐ **(recommended)** — self-hosted Docker instance you run on your own infrastructure (VPS, home server, etc.). Host it separately from the agent where possible — running both on the same machine gives the agent direct access to the admin API, which weakens the security boundary.
