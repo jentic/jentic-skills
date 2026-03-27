@@ -187,6 +187,105 @@ The content to append to `TOOLS.md` lives in `references/tools-block.md` in this
 
 ---
 
+## Access Management — You Drive This
+
+When a user asks about API access, credentials, or permissions, **you orchestrate it** — never redirect them to the UI when an API call exists to accomplish the same goal.
+
+**Always fetch the live OpenAPI spec first** to get exact schemas before making access management calls:
+
+```bash
+curl -s "$JENTIC_URL/openapi.json" | python3 -c "
+import json, sys
+spec = json.load(sys.stdin)
+for path, methods in spec.get('paths', {}).items():
+    for method in methods:
+        if any(k in path.lower() for k in ['credential', 'permission', 'access', 'oauth', 'toolkit']):
+            print(method.upper(), path)
+"
+```
+
+Then follow this decision tree:
+
+| Situation | What to do |
+|---|---|
+| User asks what access you have | List credentials (`GET /credentials`), then list toolkits (`GET /toolkits`) |
+| Permission exists but too restrictive | Submit a `modify_permissions` access request → share `approve_url` with user |
+| Credential exists but not in toolkit | Submit a `grant` access request → share `approve_url` with user |
+| No credential yet — OAuth API (Gmail, GitHub, etc.) | Get connect link via OAuth broker → send link to user → they complete OAuth in browser → sync → submit `grant` request |
+| No credential yet — API key API | Ask user for the key → they add via Jentic Mini UI → you submit `grant` request |
+
+The connect-link flow means you **never** say "go to the UI and connect your account" — you hand the user a direct URL to the OAuth screen, they click it, and you handle everything else programmatically.
+
+### Listing what's available
+
+```bash
+# List all credentials
+curl -s -H "X-Jentic-API-Key: $JENTIC_API_KEY" "$JENTIC_URL/credentials"
+
+# List toolkits (scopes for agent access)
+curl -s -H "X-Jentic-API-Key: $JENTIC_API_KEY" "$JENTIC_URL/toolkits"
+
+# List OAuth brokers (needed for connect-link flow)
+curl -s -H "X-Jentic-API-Key: $JENTIC_API_KEY" "$JENTIC_URL/oauth-brokers"
+```
+
+### Submitting an access request
+
+```bash
+curl -s -X POST \
+  -H "X-Jentic-API-Key: $JENTIC_API_KEY" \
+  -H "Content-Type: application/json" \
+  "$JENTIC_URL/toolkits/default/access-requests" \
+  -d '{
+    "type": "grant",
+    "credential_id": "cred_xxx",
+    "reason": "Required to send email via Gmail on user request"
+  }'
+```
+
+Types: `"grant"` (add a credential to the toolkit) or `"modify_permissions"` (expand what you can do with an existing credential).
+
+Take the `approve_url` from the response and share it with the user. They approve it in the browser. **Do NOT approve your own requests** — that's the entire security boundary (see Security Model above).
+
+### OAuth connect-link flow
+
+When there is no credential yet for an OAuth API (Gmail, Calendar, GitHub, etc.):
+
+```bash
+# Step 1: Find the broker ID
+BROKER_ID=$(curl -s -H "X-Jentic-API-Key: $JENTIC_API_KEY" "$JENTIC_URL/oauth-brokers" \
+  | python3 -c "import json,sys; b=json.load(sys.stdin); print(b[0]['id'] if b else 'NONE')")
+
+# Step 2: Find the API slug from the catalog
+curl -s -H "X-Jentic-API-Key: $JENTIC_API_KEY" "$JENTIC_URL/catalog?q=gmail"
+
+# Step 3: Generate a connect link (use app_slug + api_id from catalog result)
+curl -s -X POST \
+  -H "X-Jentic-API-Key: $JENTIC_API_KEY" \
+  -H "Content-Type: application/json" \
+  "$JENTIC_URL/oauth-brokers/$BROKER_ID/connect-link" \
+  -d '{"app_slug": "gmail", "api_id": "api_xxx"}'
+# → returns { "connect_url": "https://..." }
+
+# Step 4: Share the connect_url with the user
+# Step 5: Once they confirm completion, sync to pull in the new credential
+curl -s -X POST \
+  -H "X-Jentic-API-Key: $JENTIC_API_KEY" \
+  "$JENTIC_URL/oauth-brokers/$BROKER_ID/sync"
+
+# Step 6: Submit a grant access request for the new credential
+```
+
+**If no OAuth broker exists** (`BROKER_ID` is empty): ask the user to add one via Settings → OAuth Brokers → Add in the Jentic Mini UI. They need a Pipedream Client ID, Secret, and Project ID from [pipedream.com/connect](https://pipedream.com/connect). This only needs to be set up once.
+
+### What to say to the user
+
+- OAuth connect link generated: *"Here's your [Service] authorization link: [url] — click it, grant access, and come back. I'll handle the rest."*
+- Access request submitted: *"I've submitted a permission request. Please approve it here: [approve_url]"*
+- **Never say:** *"Go to the Jentic Mini UI and add your credential there"* — unless no API call exists to get them there faster.
+
+---
+
 ## Further Reading
 
 - [jentic.com](https://jentic.com)
