@@ -314,27 +314,7 @@ Types: `"grant"` (add a credential to the toolkit) or `"modify_permissions"` (ex
 
 Take the `approve_url` from the response and share it with the user. They approve it in the browser. **Do NOT approve your own requests** — that's the entire security boundary (see Security Model above).
 
-**Poll for approval, then retry automatically:**
-
-```bash
-REQ_ID="<id from access request response>"
-while true; do
-  STATUS=$(curl -s -H "X-Jentic-API-Key: $JENTIC_API_KEY" \
-    "$JENTIC_URL/toolkits/default/access-requests/$REQ_ID" \
-    | python3 -c "import json,sys; print(json.load(sys.stdin)['status'])")
-  [ "$STATUS" != "pending" ] && break
-  sleep 5
-done
-
-if [ "$STATUS" = "approved" ]; then
-  echo "Approved — retry the operation"
-else
-  echo "Denied — surface reason to user and stop"
-fi
-```
-
-On `approved`: retry the operation that originally triggered the permission gap.
-On `denied`: fetch the denial reason from the response body and tell the user clearly.
+Poll `GET /toolkits/default/access-requests/{req_id}` periodically until `status` is no longer `pending`. On `approved`, retry the operation that triggered the gap. On `denied`, surface the reason to the user and stop.
 
 **Request minimum permissions per step** — don't ask for broad access upfront. Request only what's needed for the current operation; users are more likely to approve narrow, well-reasoned requests, and it respects least-privilege.
 
