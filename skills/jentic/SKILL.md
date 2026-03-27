@@ -187,6 +187,73 @@ The content to append to `TOOLS.md` lives in `references/tools-block.md` in this
 
 ---
 
+## Workflows — Deterministic Sequences
+
+Jentic supports two execution primitives. Choose based on whether LLM judgment is needed between steps:
+
+| Primitive | What it is | When to use |
+|---|---|---|
+| **Operation** | Single API call via broker | Any individual action; when LLM interpretation of the response determines the next step |
+| **Arazzo workflow** | Multi-step sequence executed server-side | Fixed sequence where each step follows deterministically from a status code or field value — no LLM needed between steps |
+
+**Prefer a workflow when** you're about to orchestrate a fixed sequence of 2+ operations where the output of one feeds directly into the next. Workflows run entirely server-side: faster, cheaper (no per-step LLM calls), more reliable, and consume no context window per step.
+
+### Discover workflows
+
+Search returns both operations and workflows — check results for both before deciding which to use:
+
+```bash
+# Search returns operations and workflows together
+curl -s -H "X-Jentic-API-Key: $JENTIC_API_KEY" "$JENTIC_URL/search?q=<intent>&limit=5"
+
+# List all registered workflows
+curl -s -H "X-Jentic-API-Key: $JENTIC_API_KEY" "$JENTIC_URL/workflows"
+
+# Get a workflow's input schema (LLM-friendly markdown)
+curl -s -H "X-Jentic-API-Key: $JENTIC_API_KEY" -H "Accept: text/markdown" \
+  "$JENTIC_URL/workflows/<slug>"
+```
+
+### Execute a workflow
+
+```bash
+curl -X POST \
+  -H "X-Jentic-API-Key: $JENTIC_API_KEY" \
+  -H "Content-Type: application/json" \
+  "$JENTIC_URL/workflows/<slug>" \
+  -d '{ "input_field": "value", ... }'
+```
+
+Jentic executes all steps and returns the final result. No per-step agent involvement.
+
+### Upload a new workflow
+
+When you identify a deterministic sequence worth encoding as a reusable workflow, upload it via the import endpoint:
+
+```bash
+curl -X POST \
+  -H "X-Jentic-API-Key: $JENTIC_API_KEY" \
+  -H "Content-Type: application/json" \
+  "$JENTIC_URL/import" \
+  -d '{
+    "sources": [{
+      "type": "inline",
+      "content": "<arazzo-json-as-string>",
+      "filename": "my-workflow.json"
+    }]
+  }'
+```
+
+The workflow is immediately searchable and executable. For Arazzo document format see: https://spec.openapis.org/arazzo/latest.html
+
+### Skills vs workflows — the relationship
+
+- A **skill** is the LLM coordination layer: context-dependent decisions, multi-turn interactions, anything requiring judgment.
+- A **workflow** is the automation layer: the deterministic backbone that doesn't need the LLM at all.
+- Skills call workflows as a single step for their deterministic sequences, then apply judgment to the result. They complement each other — neither replaces the other.
+
+---
+
 ## Access Management — You Drive This
 
 When a user asks about API access, credentials, or permissions, **you orchestrate it** — never redirect them to the UI when an API call exists to accomplish the same goal.
@@ -246,6 +313,30 @@ curl -s -X POST \
 Types: `"grant"` (add a credential to the toolkit) or `"modify_permissions"` (expand what you can do with an existing credential).
 
 Take the `approve_url` from the response and share it with the user. They approve it in the browser. **Do NOT approve your own requests** — that's the entire security boundary (see Security Model above).
+
+**Poll for approval, then retry automatically:**
+
+```bash
+REQ_ID="<id from access request response>"
+while true; do
+  STATUS=$(curl -s -H "X-Jentic-API-Key: $JENTIC_API_KEY" \
+    "$JENTIC_URL/toolkits/default/access-requests/$REQ_ID" \
+    | python3 -c "import json,sys; print(json.load(sys.stdin)['status'])")
+  [ "$STATUS" != "pending" ] && break
+  sleep 5
+done
+
+if [ "$STATUS" = "approved" ]; then
+  echo "Approved — retry the operation"
+else
+  echo "Denied — surface reason to user and stop"
+fi
+```
+
+On `approved`: retry the operation that originally triggered the permission gap.
+On `denied`: fetch the denial reason from the response body and tell the user clearly.
+
+**Request minimum permissions per step** — don't ask for broad access upfront. Request only what's needed for the current operation; users are more likely to approve narrow, well-reasoned requests, and it respects least-privilege.
 
 ### OAuth connect-link flow
 
